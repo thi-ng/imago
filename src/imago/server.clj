@@ -11,7 +11,8 @@
 (defn stop-server []
   (when-not (nil? @server)
     (@server :timeout 100)
-    (reset! server nil)))
+    (reset! server nil)
+    (info "server stopped")))
 
 (defn -main [& args]
   (reset! server (httpkit/run-server (reload/wrap-reload (site #'imago.core/app)) {:port 8080}))
