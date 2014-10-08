@@ -8,6 +8,6 @@
     (require ns)
     (@(ns-resolve ns (symbol (str (name type) "-provider"))) (type config/app))))
 
-(def storage-provider (get-provider :storage))
+(def storage (get-provider :storage))
 
-(def graph-provider (get-provider :graph))
+(def graph (get-provider :graph))
