@@ -1,6 +1,6 @@
 (ns imago.storage.file
   (:require
-   [imago.protocols :as proto]
+   [imago.storage.api :as api]
    [clojure.java.io :as io]
    [taoensso.timbre :refer [info warn error]]))
 
@@ -13,8 +13,9 @@
 (defn storage-provider
   [conf]
   (let [base-path (-> conf :file :path)]
+    (info "using file storage provider @" base-path)
     (init-media-dir base-path)
-    (reify proto/ImagoStorage
+    (reify api/ImagoStorage
       (list-objects
         [_ re]
         (->> base-path

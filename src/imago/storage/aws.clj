@@ -1,6 +1,6 @@
 (ns imago.storage.aws
   (:require
-   [imago.protocols :as proto]
+   [imago.storage.api :as api]
    [amazonica.core :as aws]
    [amazonica.aws.s3 :as s3]
    [clojure.java.io :as io]
@@ -15,7 +15,8 @@
   [conf]
   (let [creds (select-keys (:aws conf) [:access-key :secret-key])
         {:keys [bucket prefix]} (:aws conf)]
-    (reify proto/ImagoStorage
+    (info "using S3 storage provider @" bucket prefix)
+    (reify api/ImagoStorage
       (list-objects
         [_ re]
         (s3/list-objects creds bucket))

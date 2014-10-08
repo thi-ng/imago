@@ -16,6 +16,7 @@
                  [simple-time "0.1.1"]
                  [amazonica "0.2.27" :exclusions [joda-time]]
                  [net.coobird/thumbnailator "0.4.7"]
+                 [thi.ng/trio "0.1.0-SNAPSHOT"]
                  [thi.ng/macromath "0.2.3"]
                  [thi.ng/validate "0.1.0-SNAPSHOT"]]
 

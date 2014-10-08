@@ -1,4 +1,4 @@
-(ns imago.protocols)
+(ns imago.storage.api)
 
 (defprotocol ImagoStorage
   (list-objects [_ re])
