@@ -14,7 +14,7 @@
     (q/query (assoc qspec :from @g)))
 
   api/ImagoGraphIO
-  (load
+  (load-graph
     [_ url opts]
     (dosync
      (try
@@ -25,7 +25,7 @@
          (info "initializing default graph...")
          (ref-set g (trio/as-model (:default-graph conf))))))
     _)
-  (save
+  (save-graph
     [_ url opts]
     (try
       (info "saving graph to:" url)
@@ -37,4 +37,4 @@
 (defn graph-provider
   [conf]
   (-> (MemoryGraph. conf (ref (trio/plain-store)))
-      (api/load (-> conf :memory :path) nil)))
+      (api/load-graph (-> conf :memory :path) nil)))

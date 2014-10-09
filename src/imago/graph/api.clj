@@ -9,5 +9,5 @@
   (query [_ q]))
 
 (defprotocol ImagoGraphIO
-  (load [_ url opts])
-  (save [_ url opts]))
+  (load-graph [_ url opts])
+  (save-graph [_ url opts]))

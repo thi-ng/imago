@@ -4,6 +4,8 @@
    [imago.utils :as utils]
    [environ.core :refer [env]]))
 
+(def mode        (or (env :imago-deploy-mode) :dev))
+(def salt        (or (env :imago-salt) "969a606798c94d03b53c3fa5e83b4594"))
 (def default-dir (str (System/getProperty "user.home") "/.imago"))
 
 (def default-graph
@@ -21,17 +23,17 @@
     [{admin
       {(:type rdf) (:User imago)
        (:nick foaf) "admin"
-       (:password foaf) "imago"
+       (:password foaf) (utils/sha-256 "admin" "imago" salt)
        (:hasRole imago) (:AdminRole imago)}}
      {(utils/new-uuid)
-      {(:type rdf) (:Collection imago)
-       (:title dc) "Untitled collection"
-       (:creator dc) admin
+      {(:type rdf) (:MediaCollection imago)
+       (:title dct) "Untitled collection"
+       (:creator dct) admin
        (:usesPreset imago) (map :id (vals presets))}}
      (reduce-kv
       (fn [acc k {:keys [id width height crop]}]
         (conj acc [id {"rdf:type" (:ImageVersionPreset imago)
-                       "dc:title" (name k)
+                       "dct:title" (name k)
                        "imago:width" width
                        "imago:height" height
                        "imago:crop" (boolean crop)}]))
@@ -41,6 +43,7 @@
   {:graph
    {:impl-ns (or (env :imago-graph-impl) "image.graph.memory")
     :default-graph default-graph
+    :salt    salt
     :memory  {:path (or (env :imago-graph-path) (str default-dir "/graph.db"))}}
 
    :storage
@@ -49,4 +52,14 @@
     :aws     {:access-key (or (env :imago-aws-id) (env :aws-access-key-id))
               :secret-key (or (env :imago-aws-secret) (env :aws-secret-key))
               :bucket     (env :imago-s3-bucket)
-              :prefix     (env :imago-s3-prefix)}}})
+              :prefix     (env :imago-s3-prefix)}}
+
+   :ui
+   {:dev  {:css ["/css/bootstrap.min.css"
+                 "/css/bootstrap-theme.min.css"]
+           :js  ["/lib/react.min.js"
+                 "/js/app.js"]}
+    :prod {:css ["/css/bootstrap.min.css"
+                 "/css/bootstrap-theme.min.css"]
+           :js  ["/lib/react.min.js"
+                 "/js/app.min.js"]}}})

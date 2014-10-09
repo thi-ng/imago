@@ -6,6 +6,9 @@
    [net.coobird.thumbnailator.tasks.io FileImageSource]
    [java.awt.image BufferedImage]))
 
+;; https://code.google.com/p/thumbnailator/source/browse/src/net/coobird/thumbnailator/Thumbnails.java
+;; https://code.google.com/p/thumbnailator/wiki/Examples
+
 (defn resize-image
   [src dest dwidth dheight]
   (let [^BufferedImage img (.read (FileImageSource. src))

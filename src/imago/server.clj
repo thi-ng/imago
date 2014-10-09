@@ -15,5 +15,5 @@
     (info "server stopped")))
 
 (defn -main [& args]
-  (reset! server (httpkit/run-server (reload/wrap-reload (site #'imago.core/app)) {:port 8080}))
+  (reset! server (httpkit/run-server (reload/wrap-reload #'imago.core/app) {:port 8080}))
   (info "started server @" 8080))
