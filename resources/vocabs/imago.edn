@@ -1,15 +1,21 @@
-[{"imago:MediaItem" {"rdf:type" "owl:Class"}}
- {"imago:Image" {"owl:subClassOf" "imago:MediaItem"}}
- {"imago:ImageVersion" {"owl:subClass" "imago:Image"}}
+[{"imago:MediaResource" {"rdf:type" "owl:Class"}}
+ {"imago:StillImage" {"owl:subClassOf" "imago:MediaResource"}}
+ {"imago:ImageVersion" {"owl:subClass" "imago:StillImage"}}
  {"imago:ImageVersionPreset" {"rdf:type" "owl:Class"}}
+ {"imago:User" {"owl:subClassOf" "foaf:Agent"}}
+ {"imago:MediaCollection" {"rdf:type" "owl:Class"}}
+ {"imago:Role" {"rdf:type" "owl:Class"}}
+ {"imago:AdminRole" {"owl:subClassOf" "imago:Role"
+                     "dct:accessRights" ["admin"]}}
+ {"imago:ViewRole" {"owl:subClassOf" "imago:Role"
+                    "dct:accessRights" ["view"]}}
+ {"imago:GuestRole" {"owl:subClassOf" "imago:Role"
+                     "dct:accessRights" ["none"]}}
+
  {"imago:width" {"rdf:type" "rdf:Property"}}
  {"imago:height" {"rdf:type" "rdf:Property"}}
  {"imago:crop" {"rdf:type" "rdf:Property"}}
  {"imago:mimeType" {"rdf:type" "rdf:Property"}}
- {"imago:usesPreset" {"rdf:type" "rdf:Property"}}
- {"imago:User" {"owl:subClassOf" "foaf:Agent"}}
- {"imago:Collection" {"rdf:type" "owl:Class"}}
- {"imago:Role" {"rdf:type" "owl:Class"}}
  {"imago:hasRole" {"rdf:type" "rdf:Property"}}
- {"imago:AdminRole" {"owl:subClassOf" "imago:Role"}}
- {"imago:GuestRole" {"owl:subClassOf" "imago:Role"}}]
+ {"imago:hasVersion" {"rdf:type" "rdf:Property"}}
+ {"imago:usesPreset" {"rdf:type" "rdf:Property"}}]
