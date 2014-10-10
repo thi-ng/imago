@@ -41,7 +41,7 @@
 
 (def app
   {:graph
-   {:impl-ns (or (env :imago-graph-impl) "image.graph.memory")
+   {:impl-ns (or (env :imago-graph-impl) "imago.graph.memory")
     :default-graph default-graph
     :salt    salt
     :memory  {:path (or (env :imago-graph-path) (str default-dir "/graph.db"))}}
@@ -57,9 +57,10 @@
    :ui
    {:dev  {:css ["/css/bootstrap.min.css"
                  "/css/bootstrap-theme.min.css"]
-           :js  ["/lib/react.min.js"
-                 "/js/app.js"]}
+           :js  [;;"/lib/react.min.js"
+                 "/js/app.js"]
+           :override-config "'imago.config.app'"}
     :prod {:css ["/css/bootstrap.min.css"
                  "/css/bootstrap-theme.min.css"]
-           :js  ["/lib/react.min.js"
+           :js  [;;"/lib/react.min.js"
                  "/js/app.min.js"]}}})

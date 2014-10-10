@@ -21,11 +21,15 @@
                  ;; cljs
                  [org.clojure/clojurescript "0.0-2322"]
                  [com.cognitect/transit-cljs "0.8.188"]
-                 [racehub/om-bootstrap "0.3.0" :exclusions [org.clojure/clojure]]
-                 [om "0.7.3"]
+                 ;;[racehub/om-bootstrap "0.3.0" :exclusions [org.clojure/clojure]]
+                 ;;[om "0.7.3"]
+                 ;;[sablono "0.2.22"]
 
                  ;; cljx
+                 [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [thi.ng/trio "0.1.0-SNAPSHOT"]
+                 [thi.ng/geom-core "0.3.0-SNAPSHOT"]
+                 [thi.ng/geom-webgl "0.3.0-SNAPSHOT"]
                  [thi.ng/macromath "0.2.3"]
                  [thi.ng/validate "0.1.0-SNAPSHOT"]]
 
@@ -40,6 +44,7 @@
                         :compiler {:output-to "resources/public/js/app.min.js"
                                    :optimizations :advanced
                                    :pretty-print false
-                                   :preamble ["resources/public/lib/react.min.js"]
-                                   :externs ["js/externs/react.js"]}}]}
+                                   ;;:preamble ["resources/public/lib/react.min.js"]
+                                   ;;:externs ["js/externs/react.js"]
+                                   }}]}
   :main imago.server)

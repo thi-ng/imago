@@ -10,17 +10,21 @@
    [compojure.core :refer [defroutes context routes GET POST]]
    [compojure.route :as route]
    [hiccup.page :refer [html5 include-js include-css]]
+   [hiccup.element :as el]
    [taoensso.timbre :refer [info warn error]]))
 
 (def page-cache
   {:home (html5
           [:head
-           [:title "Imago"]
+           [:title "imago"]
            [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
            (apply include-css (-> config/app :ui (config/mode) :css))]
           [:body
-           [:div#imago-app [:h1 "imago"]]
-           (apply include-js (-> config/app :ui (config/mode) :js))])})
+           [:div#imago-app]
+           (apply include-js (-> config/app :ui (config/mode) :js))
+           (el/javascript-tag
+            (str "var __IMAGO_CONFIG__="
+                 (or (-> config/app :ui (config/mode) :override-config) "null") ";"))])})
 
 (defn wrap-login-check
   [handler allowed-uris redirect-uri session-check]
