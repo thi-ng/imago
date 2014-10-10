@@ -46,7 +46,7 @@
         (async/publish bus init-id [state params]))
       (do
         (warn "route handling module not configured:" new-id)
-        (apply route/set-route!
+        (apply route/replace-route!
                (or (-> @state :route :route)
                    (get-in config/app [:routes (:default-route-id config/app) :route])))))))
 
