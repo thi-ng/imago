@@ -1,4 +1,4 @@
-(ns imago.home
+(ns imago.user
   (:require-macros
    [cljs.core.async.macros :refer [go go-loop]])
   (:require
@@ -12,21 +12,22 @@
 
 (defn show-template
   [state]
-  (->> (:app-root config/app)
-       (dom/clear!)
-       (dom/create-dom!
-        [:div.jumbotron
-         [:h1 "Welcome to imago"]
-         [:p "Graph all your media!"]
-         [:p
-          [:a.btn.btn-primary.btn-lg
-           {:href "#/register"}
-           "Register"]]])))
+  (let [user (:user @state)
+        uname (or (:name user) (:user-name user))]
+    (->> (:app-root config/app)
+         (dom/clear!)
+         (dom/create-dom!
+          [:div.jumbotron
+           [:h1 (str "Welcome back, " uname)]
+           [:p
+            [:a.btn.btn-primary.btn-lg
+             {:href "#/upload"}
+             "Upload media"]]]))))
 
 (defn init
   [bus]
-  (let [init (async/subscribe bus :init-home)]
-    (debug :home-init)
+  (let [init (async/subscribe bus :init-user)]
+    (debug :init-user)
     (go-loop []
       (let [[_ [state]] (<! init)]
         (show-template state)

@@ -123,15 +123,18 @@
            (let [[{:strs [user pass]} err] (validate-api-params (:form-params req) :login)]
              (info "login attempt:" user pass)
              (if (nil? err)
-               (if-let [user (->> {:select :*
-                                   :query [{:where [['?u (:type rdf) (:User imago)]
-                                                    ['?u (:nick foaf) user]
-                                                    ['?u (:password foaf) (utils/sha-256 user pass config/salt)]]}
-                                           {:optional [['?u (:name foaf) '?n]]}]}
-                                  (gapi/query graph)
-                                  (first))]
-                 (-> (api-response req {:user-id (user '?u) :name (user '?n)} 200)
-                     (assoc :session {:user (user '?u)}))
+               (if-let [user' (->> {:select :*
+                                    :query [{:where [['?u (:type rdf) (:User imago)]
+                                                     ['?u (:nick foaf) user]
+                                                     ['?u (:password foaf) (utils/sha-256 user pass config/salt)]]}
+                                            {:optional [['?u (:name foaf) '?n]]}]}
+                                   (gapi/query graph)
+                                   (first))]
+                 (let [user' {:id (user' '?u)
+                              :user-name user
+                              :name (user' '?n)}]
+                   (-> (api-response req user' 200)
+                       (assoc :session {:user user'})))
                  (api-response req "invalid login" 403))
                (api-response req err 400)))
            (invalid-api-response)))

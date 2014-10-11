@@ -4,6 +4,7 @@
   (:require
    [imago.config :as config]
    [imago.home :as home]
+   [imago.user :as user]
    [imago.login :as login]
    [imago.alerts :as alerts]
    [thi.ng.cljs.async :as async]
@@ -14,34 +15,45 @@
    [thi.ng.cljs.dom :as dom]
    [thi.ng.cljs.detect :as detect]
    [goog.events :as events]
+   [clojure.string :as str]
    [cljs.core.async :refer [<! timeout]]))
 
 (def modules
-  {:home {:init home/init :enabled true}})
+  {:home {:init home/init :enabled true}
+   :user {:init user/init}})
+
+(defn build-nav
+  [nav-routes sel-id user]
+  (for [{:keys [id route label]} nav-routes
+        :let [route (str/replace route "{{user}}" user)]]
+    (if (= sel-id id)
+      [:li.active [:a {:href route} label]]
+      [:li [:a {:href route} label]])))
 
 (defn show-nav
   [state sel-id]
-  (->> (:nav-root config/app)
-       (dom/clear!)
-       (dom/create-dom!
-        [:div.navbar.navbar-default.navbar-static-top
-         [:div.container
-          [:div.navbar-header
-           [:a.navbar-brand {:href "#/home"} "imago"]]
-          [:div.navbar-collapse.collapse
-           [:ul.nav.navbar-nav
-            (for [{:keys [id route label]} (:nav-items config/app)]
-              (if (= sel-id id)
-                [:li.active [:a {:href route} label]]
-                [:li [:a {:href route} label]]))]
-           [:ul.nav.navbar-nav.navbar-right
-            (if (:user @state)
-              [:li [:a {:href "#/logout"} "Logout"]]
-              [:li [:a {:href "#"
-                        :events [[:click (fn [e]
-                                           (.preventDefault e)
-                                           (login/login-dialog (:bus @state)))]]}
-                    "Login"]])]]]])))
+  (let [user (-> @state :user :user-name)
+        nav-routes (if user
+                     (-> config/app :nav-items :user)
+                     (-> config/app :nav-items :anon))]
+    (->> (:nav-root config/app)
+         (dom/clear!)
+         (dom/create-dom!
+          [:div.navbar.navbar-default.navbar-static-top
+           [:div.container
+            [:div.navbar-header
+             [:a.navbar-brand {:href "#/home"} "imago"]]
+            [:div.navbar-collapse.collapse
+             [:ul.nav.navbar-nav
+              (build-nav nav-routes sel-id user)]
+             [:ul.nav.navbar-nav.navbar-right
+              (if (:user @state)
+                [:li [:a {:href "#/logout"} "Logout"]]
+                [:li [:a {:href "#"
+                          :events [[:click (fn [e]
+                                             (.preventDefault e)
+                                             (login/login-dialog (:bus @state)))]]}
+                      "Login"]])]]]]))))
 
 (defn transition-controllers
   [state {new-id :controller params :params :as route}]
@@ -104,7 +116,7 @@
       (let [[_ user] (<! login-ok)]
         (info :user-logged-in user)
         (swap! state assoc :user user)
-        (route/set-route! "/")
+        (route/set-route! "user" (:user-name user))
         (recur)))
     (go-loop []
       (let [[_ err] (<! login-err)]
