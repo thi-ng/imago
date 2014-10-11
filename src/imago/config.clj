@@ -2,11 +2,25 @@
   (:require
    [imago.graph.vocab :refer :all]
    [imago.utils :as utils]
+   [thi.ng.validate.core :as v]
    [environ.core :refer [env]]))
 
 (def mode        (or (env :imago-deploy-mode) :dev))
 (def salt        (or (env :imago-salt) "969a606798c94d03b53c3fa5e83b4594"))
 (def default-dir (str (System/getProperty "user.home") "/.imago"))
+
+(def mime-types
+  {:edn    "application/edn"
+   :json   "application/json"
+   :png    "image/png"
+   :jpg    "image/jpeg"
+   :svg    "image/svg+xml"
+   :text   "text/plain"
+   :stl    "application/sla"
+   :binary "application/octet-stream"})
+
+(def api-mime-types
+  (vals (select-keys mime-types [:edn :json])))
 
 (def default-graph
   (let [presets {:thumb      {:id "581cfd98-32f4-4c5d-845c-29c45539cf7e"
@@ -23,6 +37,7 @@
     [{admin
       {(:type rdf) (:User imago)
        (:nick foaf) "admin"
+       (:name foaf) "Imago Admin"
        (:password foaf) (utils/sha-256 "admin" "imago" salt)
        (:hasRole imago) (:AdminRole imago)}}
      {(utils/new-uuid)
@@ -54,13 +69,17 @@
               :bucket     (env :imago-s3-bucket)
               :prefix     (env :imago-s3-prefix)}}
 
+   :validators
+   {:api  {:login
+           {"user" [(v/required) (v/max-length 16)]
+            "pass" [(v/required) (v/min-length 4) (v/max-length 40)]}}}
    :ui
    {:dev  {:css ["/css/bootstrap.min.css"
                  "/css/bootstrap-theme.min.css"]
-           :js  [;;"/lib/react.min.js"
-                 "/js/app.js"]
+           :js  ["/js/app.js"
+                 "/lib/sha256.js"]
            :override-config "'imago.config.app'"}
     :prod {:css ["/css/bootstrap.min.css"
                  "/css/bootstrap-theme.min.css"]
-           :js  [;;"/lib/react.min.js"
-                 "/js/app.min.js"]}}})
+           :js  ["/js/app.min.js"
+                 "/lib/sha256.js"]}}})

@@ -1,6 +1,6 @@
 (ns imago.home
   (:require-macros
-   [cljs.core.async.macros :as asm :refer [go go-loop]])
+   [cljs.core.async.macros :refer [go go-loop]])
   (:require
    [imago.config :as config]
    [thi.ng.cljs.async :as async]
@@ -10,7 +10,24 @@
    [thi.ng.cljs.dom :as dom]
    [cljs.core.async :refer [<! timeout]]))
 
+(defn show-template
+  []
+  (->> (:app-root config/app)
+       (dom/clear!)
+       (dom/create-dom!
+        [:div.jumbotron
+         [:h1 "Welcome to imago"]
+         [:p "Graph all your media!"]
+         [:p
+          [:a.btn.btn-primary.btn-lg
+           {:href "#/upload"}
+           "Upload media"]]])))
+
 (defn init
   [bus]
-  (debug :home-init))
-
+  (let [init (async/subscribe bus :init-home)]
+    (debug :home-init)
+    (go-loop []
+      (let [[_ [state]] (<! init)]
+        (show-template)
+        (recur)))))

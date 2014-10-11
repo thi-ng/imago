@@ -11,3 +11,5 @@
     (let [digest (.digest md)]
       (apply str (mapv #(format "%02x" (bit-and % 0xff)) digest)))))
 
+(defn str-contains?
+  [^String str ^String x] (not (neg? (.indexOf str x))))

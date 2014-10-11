@@ -11,6 +11,7 @@
                  [compojure "1.2.0"]
                  [hiccup "1.0.5"]
                  [com.cognitect/transit-clj "0.8.259"]
+                 [org.clojure/data.json "0.2.5"]
                  [com.taoensso/timbre "3.3.1"]
                  [environ "1.0.0"]
                  [camel-snake-kebab "0.1.5"]

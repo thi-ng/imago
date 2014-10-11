@@ -63,6 +63,8 @@
   [el attrs]
   (map #(.getAttribute el %) attrs))
 
+(declare add-listeners)
+
 (defn set-attribs!
   [el attribs]
   (if el
@@ -70,8 +72,9 @@
       (if attribs
         (let [[k v] (first attribs)]
           (if v
-            (if (= :style k)
-              (set-style! el v)
+            (condp = k
+              :style  (set-style! el v)
+              :events (add-listeners (map #(vec (cons el %)) v))
               (.setAttribute el (name k) v)))
           (recur (next attribs))))))
   el)

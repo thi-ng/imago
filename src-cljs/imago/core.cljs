@@ -1,9 +1,11 @@
 (ns imago.core
   (:require-macros
-   [cljs.core.async.macros :refer [go]])
+   [cljs.core.async.macros :refer [go go-loop]])
   (:require
    [imago.config :as config]
    [imago.home :as home]
+   [imago.login :as login]
+   [imago.alerts :as alerts]
    [thi.ng.cljs.async :as async]
    [thi.ng.cljs.io :as io]
    [thi.ng.cljs.log :refer [debug info warn]]
@@ -17,14 +19,29 @@
 (def modules
   {:home {:init home/init :enabled true}})
 
-(defn transition-dom
-  [a b]
-  #_(when-not (= a b)
-      (let [ea (dom/by-id (name a))
-            eb (dom/by-id (name b))
-            dir (if (pos? (config/transition a b)) "next" "prev")]
-        (dom/set-class! ea dir)
-        (dom/set-class! eb "current"))))
+(defn show-nav
+  [state sel-id]
+  (->> (:nav-root config/app)
+       (dom/clear!)
+       (dom/create-dom!
+        [:div.navbar.navbar-default.navbar-static-top
+         [:div.container
+          [:div.navbar-header
+           [:a.navbar-brand {:href "#/home"} "imago"]]
+          [:div.navbar-collapse.collapse
+           [:ul.nav.navbar-nav
+            (for [{:keys [id route label]} (:nav-items config/app)]
+              (if (= sel-id id)
+                [:li.active [:a {:href route} label]]
+                [:li [:a {:href route} label]]))]
+           [:ul.nav.navbar-nav.navbar-right
+            (if (:user @state)
+              [:li [:a {:href "#/logout"} "Logout"]]
+              [:li [:a {:href "#"
+                        :events [[:click (fn [e]
+                                           (.preventDefault e)
+                                           (login/login-dialog (:bus @state)))]]}
+                    "Login"]])]]]])))
 
 (defn transition-controllers
   [state {new-id :controller params :params :as route}]
@@ -43,6 +60,7 @@
           (if (= new-id curr-id)
             (async/publish bus release-id nil)
             (js/setTimeout #(async/publish bus release-id nil) delay)))
+        (show-nav state new-id)
         (async/publish bus init-id [state params]))
       (do
         (warn "route handling module not configured:" new-id)
@@ -53,15 +71,13 @@
 (defn listen-route-change
   [bus]
   (let [ch (async/subscribe bus :route-changed)]
-    (go
-      (loop []
-        (let [[_ [state new-route]] (<! ch)
-              curr-id (-> @state :route :controller)
-              new-id (:controller new-route)]
-          (debug :new-route new-route)
-          (transition-controllers state new-route)
-          (transition-dom curr-id new-id)
-          (recur))))))
+    (go-loop []
+      (let [[_ [state new-route]] (<! ch)
+            curr-id (-> @state :route :controller)
+            new-id (:controller new-route)]
+        (debug :new-route new-route)
+        (transition-controllers state new-route)
+        (recur)))))
 
 (defn listen-dom
   [bus]
@@ -79,6 +95,24 @@
                 #(async/publish bus :route-changed [state %]))]
     (listen-route-change bus)
     (route/start-router! router)))
+
+(defn login-watcher
+  [bus state]
+  (let [login-ok (async/subscribe bus :login-success)
+        login-err (async/subscribe bus :login-fail)]
+    (go-loop []
+      (let [[_ user] (<! login-ok)]
+        (info :user-logged-in user)
+        (swap! state assoc :user user)
+        (route/set-route! "/")
+        (recur)))
+    (go-loop []
+      (let [[_ err] (<! login-err)]
+        (debug :err err)
+        (alerts/alert
+         [:div [:strong "Login failed!"] " Please try again..."]
+         (:app-root config/app))
+        (recur)))))
 
 (defn make-app-state
   [bus]
@@ -99,8 +133,6 @@
     (init-router
      bus state
      (:routes config/app) (:default-route-id config/app))
-    (dom/create-dom!
-     [:a {:href "#/login2"} "Login"]
-     (dom/by-id "imago-app"))))
+    (login-watcher bus state)))
 
 (.addEventListener js/window "load" start)
