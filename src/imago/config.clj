@@ -24,34 +24,42 @@
 
 (def default-graph
   (let [presets {:thumb      {:id "581cfd98-32f4-4c5d-845c-29c45539cf7e"
-                              :width 200 :height 200 :crop true}
+                              :width 200 :height 200 :crop true :mime :jpg}
                  :small      {:id "296e1cfd-9fb7-4af7-9714-57f177e60ad5"
-                              :width 320 :height 240}
+                              :width 320 :height 240 :mime :jpg}
                  :hd360      {:id "3c253c5d-a0cb-42df-964d-8167ddae818f"
-                              :width 640 :height 360 :crop true}
+                              :width 640 :height 360 :crop true :mime :jpg}
                  :hd720-crop {:id "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"
-                              :width 1280 :height 720 :crop true}
+                              :width 1280 :height 720 :crop true :mime :jpg}
                  :hd720      {:id "adf8457f-64bf-4875-a713-faa8063eaba7"
-                              :width 1280 :height 720}}
-        admin   (utils/new-uuid)]
+                              :width 1280 :height 720 :mime :jpg}}
+        admin   (utils/new-uuid)
+        coll    (utils/new-uuid)]
     [{admin
       {(:type rdf) (:User imago)
        (:nick foaf) "admin"
        (:name foaf) "Imago Admin"
        (:password foaf) (utils/sha-256 "admin" "imago" salt)
+       (:creator dct) coll
        (:hasRole imago) (:AdminRole imago)}}
-     {(utils/new-uuid)
+     [(:AdminRole imago) "dct:accessRights"
+      ["view-any" "edit-any" "create-coll" "upload" "maintenance"]]
+     [(:UserRole imago) "dct:accessRights"
+      ["view-any" "edit-own" "create-coll" "upload"]]
+     [(:GuestRole imago) "dct:accessRights"
+      ["view-any"]]
+     {coll
       {(:type rdf) (:MediaCollection imago)
        (:title dct) "Untitled collection"
-       (:creator dct) admin
        (:usesPreset imago) (map :id (vals presets))}}
      (reduce-kv
-      (fn [acc k {:keys [id width height crop]}]
+      (fn [acc k {:keys [id width height crop mime]}]
         (conj acc [id {"rdf:type" (:ImageVersionPreset imago)
                        "dct:title" (name k)
                        "imago:width" width
                        "imago:height" height
-                       "imago:crop" (boolean crop)}]))
+                       "imago:crop" (boolean crop)
+                       "imago:mimeType" (mime-types mime)}]))
       {} presets)]))
 
 (def app
@@ -71,15 +79,67 @@
 
    :validators
    {:api  {:login
-           {"user" [(v/required) (v/max-length 16)]
-            "pass" [(v/required) (v/min-length 4) (v/max-length 40)]}}}
+           {:user [(v/required) (v/max-length 16)]
+            :pass [(v/required) (v/min-length 4) (v/max-length 40)]}
+           :upload
+           {:user [(v/required)]
+            :coll-id [(v/required) (v/uuid4)]}}}
+
+   :queries
+   {:login
+    (fn [user pass]
+      {:select :*
+       :query [{:where [['?u (:type rdf) (:User imago)]
+                        ['?u (:nick foaf) user]
+                        ['?u (:password foaf) (utils/sha-256 user pass salt)]
+                        ['?u (:hasRole imago) '?r]
+                        ['?r (:accessRights dct) '?perm]]}
+               {:optional [['?u (:name foaf) '?n]]}]
+       :aggregate {'?perms {:use '?perm :fn #(into #{} %)}}})
+
+    :get-user-collections
+    (fn [user]
+      {:select '[?id ?title]
+       :query [{:where [['?u (:type rdf) (:User imago)]
+                        ['?u (:nick foaf) user]
+                        ['?u (:creator dct) '?id]
+                        ['?id (:type rdf) (:MediaCollection imago)]
+                        ['?id (:title dct) '?title]]}]})
+    :get-collection
+    (fn [coll-id]
+      {:select :*
+       :query [{:where [[coll-id (:type rdf) (:MediaCollection imago)]
+                        [coll-id (:title dct) '?title]
+                        ['?id (:type rdf) (:StillImage imago)]
+                        ['?id (:isPartOf dct) coll-id]
+                        ['?id (:hasVersion dct) '?version]
+                        ['?version (:references dct) '?preset]
+                        ['?preset (:width imago) '?w]
+                        ['?preset (:height imago) '?h]
+                        ['?preset (:mimeType imago) '?mime]]}]
+       :group '[?id ?version]})
+    :collection-presets
+    (fn [coll-id]
+      {:select :*
+       :query [{:where [[coll-id (:type rdf) (:MediaCollection imago)]
+                        [coll-id (:usesPreset imago) '?preset]
+                        ['?preset (:width imago) '?w]
+                        ['?preset (:height imago) '?h]
+                        ['?preset (:crop imago) '?crop]
+                        ['?preset (:mimeType imago) '?mime]]}]
+       :group '?preset})}
    :ui
    {:dev  {:css ["/css/bootstrap.min.css"
-                 "/css/bootstrap-theme.min.css"]
+                 "/css/bootstrap-theme.min.css"
+                 "/css/imago.css"]
            :js  ["/js/app.js"
                  "/lib/sha256.js"]
            :override-config "'imago.config.app'"}
     :prod {:css ["/css/bootstrap.min.css"
-                 "/css/bootstrap-theme.min.css"]
+                 "/css/bootstrap-theme.min.css"
+                 "/css/imago.css"]
            :js  ["/js/app.min.js"
                  "/lib/sha256.js"]}}})
+
+(defn query-spec
+  [id & args] (apply (-> app :queries id) args))

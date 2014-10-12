@@ -76,3 +76,17 @@
 
 (defn format-date-time
   [d] (str (format-date d) " " (format-time d)))
+
+(defn- rand-bits [pow]
+  (rand-int (bit-shift-left 1 pow)))
+
+(defn new-uuid
+  []
+  (str
+   (-> (js/Date.) (.getTime) (/ 1000) (Math/round) (.toString 16))
+   "-" (-> (rand-bits 16) (.toString 16))
+   "-" (-> (rand-bits 16) (bit-and 0x0FFF) (bit-or 0x4000) (.toString 16))
+   "-" (-> (rand-bits 16) (bit-and 0x3FFF) (bit-or 0x8000) (.toString 16))
+   "-" (-> (rand-bits 16) (.toString 16))
+   (-> (rand-bits 16) (.toString 16))
+   (-> (rand-bits 16) (.toString 16))))

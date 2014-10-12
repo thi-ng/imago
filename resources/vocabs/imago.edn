@@ -1,21 +1,39 @@
-[{"imago:MediaResource" {"rdf:type" "owl:Class"}}
- {"imago:StillImage" {"owl:subClassOf" "imago:MediaResource"}}
- {"imago:ImageVersion" {"owl:subClass" "imago:StillImage"}}
- {"imago:ImageVersionPreset" {"rdf:type" "owl:Class"}}
- {"imago:User" {"owl:subClassOf" "foaf:Agent"}}
- {"imago:MediaCollection" {"rdf:type" "owl:Class"}}
- {"imago:Role" {"rdf:type" "owl:Class"}}
- {"imago:AdminRole" {"owl:subClassOf" "imago:Role"
-                     "dct:accessRights" ["admin"]}}
- {"imago:ViewRole" {"owl:subClassOf" "imago:Role"
-                    "dct:accessRights" ["view"]}}
- {"imago:GuestRole" {"owl:subClassOf" "imago:Role"
-                     "dct:accessRights" ["none"]}}
+[{"imago:MediaResource"
+  {"rdf:type" "owl:Class"}}
+ {"imago:StillImage"
+  {"owl:subClassOf" "imago:MediaResource"}}
+ {"imago:ImageVersion"
+  {"owl:subClass" "imago:StillImage"}}
+ {"imago:ImageVersionPreset"
+  {"rdf:type" "owl:Class"}}
+ {"imago:User"
+  {"owl:subClassOf" "foaf:Agent"}}
+ {"imago:MediaCollection"
+  {"rdf:type" "owl:Class"}}
+ {"imago:Role"
+  {"rdf:type" "owl:Class"}}
+ {"imago:AdminRole"
+  {"owl:subClassOf" "imago:Role"}}
+ {"imago:UserRole"
+  {"owl:subClassOf" "imago:Role"}}
+ {"imago:GuestRole"
+  {"owl:subClassOf" "imago:Role"}}
 
  {"imago:width" {"rdf:type" "rdf:Property"}}
  {"imago:height" {"rdf:type" "rdf:Property"}}
  {"imago:crop" {"rdf:type" "rdf:Property"}}
  {"imago:mimeType" {"rdf:type" "rdf:Property"}}
  {"imago:hasRole" {"rdf:type" "rdf:Property"}}
- {"imago:hasVersion" {"rdf:type" "rdf:Property"}}
  {"imago:usesPreset" {"rdf:type" "rdf:Property"}}]
+
+
+;; Admin
+;; - add/delete user
+;; - view/delete any media/collection
+;; - maintenance (trigger/restore) backup
+
+;; User
+;; - add/edit/delete collection
+;; - edit collection presets
+;; - upload media
+;; - add media item to collection

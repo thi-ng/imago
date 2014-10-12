@@ -23,7 +23,11 @@
 
    :api-routes
    {:get-object (fn [id] (str "objects/" id))
-    :login      (constantly "/user/login")}
+    :user-collections (fn [user] (str "/user/" user "/collections"))
+    :login      (constantly "/user/login")
+    :logout     (constantly "/user/logout")
+    :upload     (fn [id] (str "/media/collections/" id))
+    }
 
    :api-inject {}
 

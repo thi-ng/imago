@@ -25,6 +25,19 @@
                 (warn :error-response status body)
                 (async/publish bus :login-fail (:body body))))))
 
+(defn handle-logout
+  [bus]
+  (io/request
+   :uri     (config/api-route :logout)
+   :method  :post
+   :edn?    true
+   :success (fn [status body]
+              (info :success-response status body)
+              (async/publish bus :logout-success (:body body)))
+   :error   (fn [status body]
+              (warn :error-response status body)
+              (async/publish bus :logout-fail (:body body)))))
+
 (defn login-dialog
   [bus]
   (modal/modal-dialog

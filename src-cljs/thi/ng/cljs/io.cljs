@@ -18,11 +18,13 @@
 
 (defn ->request-data
   [data]
-  (->> data
-       (clj->js)
-       (structs/Map.)
-       (qd/createFromMap)
-       (str)))
+  (if (map? data)
+    (->> data
+         (clj->js)
+         (structs/Map.)
+         (qd/createFromMap)
+         (str))
+    data))
 
 (defn ->callback
   [callback edn?]

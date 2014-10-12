@@ -26,6 +26,7 @@
         [_ src dest opts]
         (let [dest (str base-path "/" dest)]
           (info "put object:" src ">>" dest)
+          (io/make-parents dest)
           (with-open [i (io/input-stream src)
                       o (io/output-stream dest)]
             (io/copy i o)))))))

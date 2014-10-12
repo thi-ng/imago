@@ -1,11 +1,14 @@
 (ns imago.core
   (:require
    [imago.config :as config]
-   [imago.providers :refer [graph]]
+   [imago.providers :refer [storage graph]]
    [imago.graph.api :as gapi]
    [imago.graph.vocab :refer :all]
+   [imago.storage.api :as sapi]
+   [imago.image :as image]
    [imago.utils :as utils]
    [thi.ng.validate.core :as v]
+   [thi.ng.trio.query :as q]
    [ring.util.response :as resp]
    [ring.util.codec :as codec]
    [ring.middleware.defaults :as rd]
@@ -15,22 +18,25 @@
    [hiccup.element :as el]
    [clojure.edn :as edn]
    [clojure.data.json :as json]
-   [taoensso.timbre :refer [info warn error]]))
+   [taoensso.timbre :refer [info warn error]])
+  (:import
+   [java.io File]))
 
 (def page-cache
-  {:home (html5
-          [:head
-           [:title "imago"]
-           [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-           (apply include-css (-> config/app :ui (config/mode) :css))]
-          [:body
-           [:div#imago-nav]
-           [:div#imago-app.container]
-           [:div#imago-modals]
-           (apply include-js (-> config/app :ui (config/mode) :js))
-           (el/javascript-tag
-            (str "var __IMAGO_CONFIG__="
-                 (or (-> config/app :ui (config/mode) :override-config) "null") ";"))])})
+  {:home
+   (html5
+    [:head
+     [:title "imago"]
+     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+     (apply include-css (-> config/app :ui (config/mode) :css))]
+    [:body
+     [:div#imago-nav]
+     [:div#imago-app.container]
+     [:div#imago-modals]
+     (apply include-js (-> config/app :ui (config/mode) :js))
+     (el/javascript-tag
+      (str "var __IMAGO_CONFIG__="
+           (or (-> config/app :ui (config/mode) :override-config) "null") ";"))])})
 
 (defn request-signature
   [uri params key]
@@ -45,7 +51,6 @@
 (defn valid-accept?
   [req types]
   (let [^String accept (get-in req [:headers "accept"])]
-    (prn :req req)
     (or (= accept "*/*")
         (some #(utils/str-contains? accept %) types))))
 
@@ -103,53 +108,95 @@
 (defn missing-entity-response
   [req id] (api-response req {:reason (str "Unknown ID: " id)} 404))
 
-(defn new-entity-request
-  [req validate-id handler]
+(defn wrapped-api-handler
+  [req params validate-id handler]
   (if (valid-api-accept? req)
-    (let [[params err] (validate-api-params (:form-params req) validate-id)]
+    (let [[params err] (if validate-id
+                         (validate-api-params params validate-id)
+                         [params])]
       (if (nil? err)
         (try
           (handler req params)
           (catch Exception e
             (.printStackTrace e)
-            (api-response req "Error saving entity" 500)))
+            (api-response req "Error handling route" 500)))
         (api-response req err 400)))
     (invalid-api-response)))
 
 (def user-routes
   (routes
    (POST "/login" [:as req]
-         (if (valid-api-accept? req)
-           (let [[{:strs [user pass]} err] (validate-api-params (:form-params req) :login)]
-             (info "login attempt:" user pass)
-             (if (nil? err)
-               (if-let [user' (->> {:select :*
-                                    :query [{:where [['?u (:type rdf) (:User imago)]
-                                                     ['?u (:nick foaf) user]
-                                                     ['?u (:password foaf) (utils/sha-256 user pass config/salt)]]}
-                                            {:optional [['?u (:name foaf) '?n]]}]}
-                                   (gapi/query graph)
-                                   (first))]
-                 (let [user' {:id (user' '?u)
-                              :user-name user
-                              :name (user' '?n)}]
-                   (-> (api-response req user' 200)
-                       (assoc :session {:user user'})))
-                 (api-response req "invalid login" 403))
-               (api-response req err 400)))
-           (invalid-api-response)))
+         (info "login attempt:" (:params req))
+         (wrapped-api-handler
+          req (:params req) :login
+          (fn [req {:keys [user pass]}]
+            (let [user' (->> (config/query-spec :login user pass)
+                             (gapi/query graph)
+                             (first))]
+              (info :found-user user')
+              (if user'
+                (let [user' {:id (user' '?u)
+                             :user-name user
+                             :name (user' '?n)
+                             :perms (user' '?perms)}]
+                  (-> (api-response req user' 200)
+                      (assoc :session {:user user'})))
+                (api-response req "invalid login" 403))))))
    (POST "/logout" [:as req]
-         (-> (api-response req "user logged out" 200)
-             (assoc :session {})))))
+         (wrapped-api-handler
+          req nil nil
+          (fn [req _]
+            (-> (api-response req "user logged out" 200)
+                (assoc :session {})))))
+   (GET "/:user/collections" [user :as req]
+        (wrapped-api-handler
+         req {:user user} :get-user-collections ;; TODO
+         (fn [req _]
+           (let [colls (->> (config/query-spec :get-user-collections user)
+                            (gapi/query graph)
+                            (q/keywordize-result-vars))]
+             (info :user-colls colls)
+             (api-response req colls 200)))))
+   ))
+
+(def media-routes
+  (routes
+   (GET "/collections/:coll-id" [coll-id :as req]
+        (wrapped-api-handler
+         req nil nil
+         (fn [req params]
+           (let [items (->> (config/query-spec :get-collection coll-id))]
+             (api-response req items 200)))))
+   (POST "/collections/:coll-id" [coll-id :as req]
+         (info req)
+         (wrapped-api-handler
+          req (assoc (:params req) :user (get-in req [:session :user])) :upload
+          (fn [req params]
+            (let [files (filter :tempfile (vals (:params req)))
+                  presets (->> (config/query-spec :collection-presets coll-id)
+                               (gapi/query graph)
+                               (vals)
+                               (map first))
+                  tmp (File/createTempFile "imago" nil)
+                  _ (info :files (map :filename files))
+                  _ (info :presets presets)
+                  _ (info :tmp-file tmp)
+                  items (->> (for [[id file] (zipmap (repeatedly utils/new-uuid) files)
+                                   {:syms [?w ?h ?mime ?preset]} presets]
+                               [id (:tempfile file) tmp ?w ?h ?mime ?preset])
+                             (reduce
+                              (fn [acc [id src dest w h mime preset]]
+                                (info "processing image: " src w h)
+                                (image/resize-image src dest w h)
+                                (sapi/put-object storage dest (str id "-" preset ".jpg") {})
+                                (conj acc id))
+                              []))]
+              (api-response req items 200)))))))
 
 (defroutes all-routes
   (GET "/" [] (:home page-cache))
-  (GET "/test" {:keys [session]}
-       (let [count   (:count session 0)
-             session (update-in session [:count] (fnil inc 0))]
-         (-> (resp/response (str "You accessed this page " count " times." (-> config/app :aws :bucket)))
-             (assoc :session session))))
   (context "/user" [] user-routes)
+  (context "/media" [] media-routes)
   (route/not-found "404"))
 
 (def app
