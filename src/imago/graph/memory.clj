@@ -35,7 +35,12 @@
     [_ url opts]
     (try
       (info "saving graph to:" url)
-      (spit url (pr-str (trio/select @g)))
+      (->> @g
+           (trio/select)
+           (group-by first)
+           (reduce-kv (fn [acc k v] (assoc acc k (mapv #(->> % (drop 1) vec) v))) {})
+           (pr-str)
+           (spit url))
       (catch Exception e
         (warn "couldn't save graph" (.getMessage e))))
     _))
