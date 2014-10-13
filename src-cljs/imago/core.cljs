@@ -51,12 +51,14 @@
               (build-nav nav-routes sel-id user)]
              [:ul.nav.navbar-nav.navbar-right
               (if (:user @state)
-                [:li [:a {:href "#"
-                          :events [[:click
-                                    (fn [e]
-                                      (.preventDefault e)
-                                      (login/handle-logout (:bus @state)))]]}
-                      "Logout"]]
+                (list
+                 [:li [:a "Logged in as " (-> @state :user :user-name)]]
+                 [:li [:a {:href "#"
+                           :events [[:click
+                                     (fn [e]
+                                       (.preventDefault e)
+                                       (login/handle-logout (:bus @state)))]]}
+                       "Logout"]])
                 [:li [:a {:href "#"
                           :events [[:click
                                     (fn [e]
