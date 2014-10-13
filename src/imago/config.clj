@@ -19,11 +19,18 @@
    :stl    "application/sla"
    :binary "application/octet-stream"})
 
+(def mime-ext
+  (zipmap
+   (sort (vals mime-types))
+   [".edn" ".json" ".bin" ".stl" ".jpg" ".png" ".svg" ".txt"]))
+
 (def api-mime-types
   (vals (select-keys mime-types [:edn :json])))
 
 (def default-graph
-  (let [presets {:thumb      {:id "581cfd98-32f4-4c5d-845c-29c45539cf7e"
+  (let [presets {:thumb-gray {:id "581cfd98-32f4-4c5d-845c-29c45539cf7e"
+                              :width 200 :height 200 :crop true :filter :grayscale :mime :png}
+                 :thumb-rgb  {:id "b23dd8c0-10d6-4b2d-99b0-5a39101691a3"
                               :width 200 :height 200 :crop true :mime :jpg}
                  :small      {:id "296e1cfd-9fb7-4af7-9714-57f177e60ad5"
                               :width 320 :height 240 :mime :jpg}
@@ -53,13 +60,14 @@
        (:title dct) "Untitled collection"
        (:usesPreset imago) (map :id (vals presets))}}
      (reduce-kv
-      (fn [acc k {:keys [id width height crop mime]}]
+      (fn [acc k {:keys [id width height crop filter mime]}]
         (conj acc [id {"rdf:type" (:ImageVersionPreset imago)
                        "dct:title" (name k)
                        "imago:width" width
                        "imago:height" height
                        "imago:crop" (boolean crop)
-                       "imago:mimeType" (mime-types mime)}]))
+                       "imago:filter" (name (or filter :none))
+                       "dct:format" (mime-types mime)}]))
       {} presets)]))
 
 (def app
@@ -116,7 +124,7 @@
                         ['?version (:references dct) '?preset]
                         ['?preset (:width imago) '?w]
                         ['?preset (:height imago) '?h]
-                        ['?preset (:mimeType imago) '?mime]]}]
+                        ['?preset (:format dct) '?mime]]}]
        :group '[?id ?version]})
     :collection-presets
     (fn [coll-id]
@@ -126,7 +134,8 @@
                         ['?preset (:width imago) '?w]
                         ['?preset (:height imago) '?h]
                         ['?preset (:crop imago) '?crop]
-                        ['?preset (:mimeType imago) '?mime]]}]
+                        ['?preset (:filter imago) '?filter]
+                        ['?preset (:format dct) '?mime]]}]
        :group '?preset})}
    :ui
    {:dev  {:css ["/css/bootstrap.min.css"

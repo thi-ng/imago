@@ -182,13 +182,20 @@
                   _ (info :presets presets)
                   _ (info :tmp-file tmp)
                   items (->> (for [[id file] (zipmap (repeatedly utils/new-uuid) files)
-                                   {:syms [?w ?h ?mime ?preset]} presets]
-                               [id (:tempfile file) tmp ?w ?h ?mime ?preset])
+                                   {:syms [?w ?h ?mime ?preset ?crop ?filter]} presets]
+                               [id (:tempfile file) tmp ?w ?h ?crop ?filter ?mime ?preset])
                              (reduce
-                              (fn [acc [id src dest w h mime preset]]
+                              (fn [acc [id src dest w h crop filter mime preset]]
                                 (info "processing image: " src w h)
-                                (image/resize-image src dest w h)
-                                (sapi/put-object storage dest (str id "-" preset ".jpg") {})
+                                (image/resize-image
+                                 {:src src
+                                  :dest dest
+                                  :type (subs (config/mime-ext mime) 1)
+                                  :width w
+                                  :height h
+                                  :crop crop
+                                  :filter filter})
+                                (sapi/put-object storage dest (str id "-" preset (config/mime-ext mime)) {})
                                 (conj acc id))
                               []))]
               (api-response req items 200)))))))

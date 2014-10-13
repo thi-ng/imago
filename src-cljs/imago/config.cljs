@@ -4,7 +4,7 @@
 
 (declare logged-in?)
 
-(def app
+(def ^:export app
   {:nav-root   (dom/by-id "imago-nav")
    :app-root   (dom/by-id "imago-app")
    :modal-root (dom/by-id "imago-modals")

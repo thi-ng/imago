@@ -29,6 +29,7 @@
                  ;; cljx
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [thi.ng/trio "0.1.0-SNAPSHOT"]
+                 [thi.ng/color "0.1.0-SNAPSHOT"]
                  [thi.ng/geom-core "0.3.0-SNAPSHOT"]
                  [thi.ng/geom-webgl "0.3.0-SNAPSHOT"]
                  [thi.ng/macromath "0.2.3"]

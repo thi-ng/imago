@@ -22,7 +22,7 @@
  {"imago:width" {"rdf:type" "rdf:Property"}}
  {"imago:height" {"rdf:type" "rdf:Property"}}
  {"imago:crop" {"rdf:type" "rdf:Property"}}
- {"imago:mimeType" {"rdf:type" "rdf:Property"}}
+ {"imago:filter" {"rdf:type" "rdf:Property"}}
  {"imago:hasRole" {"rdf:type" "rdf:Property"}}
  {"imago:usesPreset" {"rdf:type" "rdf:Property"}}]
 

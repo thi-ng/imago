@@ -25,7 +25,7 @@
 (defmacro defvocab
   [id & xs] `(def ~id (make-vocab (name '~id) (list ~@xs))))
 
-(defvocab dct :abstract :accessRights :creator :contributor :description :isPartOf :license :references :title)
+(defvocab dct :abstract :accessRights :creator :contributor :description :format :isPartOf :license :references :title)
 
 (defvocab rdf :type :Property :Resource)
 
