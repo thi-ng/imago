@@ -1,4 +1,4 @@
-(ns imago.upload
+(ns imago.collection
   (:require-macros
    [cljs.core.async.macros :refer [go go-loop]])
   (:require
@@ -22,7 +22,7 @@
           fd (js/FormData.)
           fd (reduce-kv (fn [fd k v] (doto fd (.append k v))) fd (:files @local))]
       (io/request
-       :uri     (config/api-route :upload "159fa2f7-2a59-4b1d-a696-8f1e2a63ddb7")
+       :uri     (config/api-route :collection (:id @local))
        :method  :post
        :edn?    true
        :data    fd
@@ -93,7 +93,7 @@
 
 (defn init
   [bus]
-  (let [init (async/subscribe bus :init-upload)
+  (let [init (async/subscribe bus :init-collection)
         stop! (fn [e] (.preventDefault e) (.stopPropagation e))
         local (atom {})]
     (debug :init-upload)
@@ -102,7 +102,7 @@
       [js/document :dragover stop!]
       [js/document :drop stop!]])
     (go-loop []
-      (let [[_ [state]] (<! init)]
-        (swap! local assoc :files {})
+      (let [[_ [state {:keys [id]}]] (<! init)]
+        (swap! local assoc :id id :files {})
         (show-template state local)
         (recur)))))
