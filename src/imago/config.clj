@@ -41,7 +41,9 @@
                  :hd720-crop  {:id "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"
                                :width 1280 :height 720 :crop true :mime :jpg}
                  :hd720       {:id "adf8457f-64bf-4875-a713-faa8063eaba7"
-                               :width 1280 :height 720 :mime :jpg}}
+                               :height 720 :mime :jpg}
+                 :hd1280      {:id "5d7f5d6b-c210-49c1-9e3e-59c4d15b18cd"
+                               :width 1280 :mime :jpg}}
         admin   (utils/new-uuid)
         coll    (utils/new-uuid)]
     [{admin

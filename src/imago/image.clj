@@ -66,10 +66,19 @@
     (let [^BufferedImage img (ImageIO/read src)
           swidth (.getWidth img)
           sheight (.getHeight img)
-          [x y w h] (if crop (compute-center-crop swidth sheight width height) [0 0 swidth sheight])
-          thumb (.. (Thumbnails/of (into-array [img]))
-                    (sourceRegion x y w h)
-                    (size width height)
+          thumb (Thumbnails/of (into-array [img]))
+          thumb (cond
+                 crop               (let [[x y w h] (compute-center-crop
+                                                     swidth sheight width height)]
+                                      (.. thumb
+                                          (sourceRegion x y w h)
+                                          (size width height)))
+                 (and width height) (.. thumb
+                                        (sourceRegion 0 0 swidth sheight)
+                                        (size width height))
+                 width              (.size thumb width (int (* width (/ sheight swidth))))
+                 height             (.size thumb (int (* height (/ swidth sheight))) height))
+          thumb (.. thumb
                     (addFilter (filters filter bypass-filter))
                     (outputFormat type))
           thumb (if (= "jpg" type)
