@@ -29,4 +29,6 @@
           (io/make-parents dest)
           (with-open [i (io/input-stream src)
                       o (io/output-stream dest)]
-            (io/copy i o)))))))
+            (io/copy i o))))
+      (get-object
+        [_ id] (io/input-stream (str base-path "/" id))))))

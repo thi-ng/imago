@@ -161,12 +161,24 @@
 
 (def media-routes
   (routes
+   (GET "/image/:version" [version :as req]
+        (let [img (->> (config/query-spec :media-item-version version)
+                       (gapi/query graph)
+                       (first))]
+          (info :item img)
+          (-> (sapi/get-object storage (str version (config/mime-ext (img '?mime))))
+              (resp/response)
+              (resp/header "Content-type" (img '?mime)))))
    (GET "/collections/:coll-id" [coll-id :as req]
         (wrapped-api-handler
-         req nil nil
+         req {:coll-id coll-id} :get-collection
          (fn [req params]
-           (let [items (->> (config/query-spec :get-collection coll-id))]
-             (api-response req items 200)))))
+           (let [coll (->> (config/query-spec :describe-collection coll-id)
+                           (gapi/query graph)
+                           (gapi/pack-triples))]
+             (if (seq coll)
+               (api-response req coll 200)
+               (api-response req "unknown collection" 404))))))
    (POST "/collections/:coll-id" [coll-id :as req]
          (info req)
          (wrapped-api-handler

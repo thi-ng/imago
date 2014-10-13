@@ -3,6 +3,8 @@
    [cljs.core.async.macros :refer [go go-loop]])
   (:require
    [imago.config :as config]
+   [thi.ng.trio.core :as trio]
+   [thi.ng.trio.query :as q]
    [thi.ng.cljs.async :as async]
    [thi.ng.cljs.log :refer [debug info warn]]
    [thi.ng.cljs.route :as route]
@@ -75,6 +77,30 @@
       (dom/remove-class! (dom/by-id "dropzone-wrapper") "dropzone-active")
       (debug @local))))
 
+(defn load-collection
+  [state local]
+  (io/request
+   :uri     (config/api-route :collection (:id @local))
+   :method  :get
+   :edn?    true
+   :success (fn [status body]
+              (let [coll (trio/as-model (:body body))
+                    thumbs (q/query {:select :* :from coll
+                                     :query [{:where '[[?v "dct:references"
+                                                        "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]]}]})]
+                (info :thumbs thumbs)
+                (dom/create-dom!
+                 [:div.row
+                  (for [{:syms [?v]} thumbs]
+                    [:div.col-xs-2
+                     [:a.thumbnail {:href "#"}
+                      [:img {:src (str "/media/image/" ?v)}]]])]
+                 (:app-root config/app))
+                (async/publish (:bus @state) :load-coll-success coll)))
+   :error   (fn [status body]
+              (warn :error-response status body)
+              (async/publish (:bus @state) :load-coll-fail (:body body)))))
+
 (defn show-template
   [state local]
   (->> (:app-root config/app)
@@ -105,4 +131,5 @@
       (let [[_ [state {:keys [id]}]] (<! init)]
         (swap! local assoc :id id :files {})
         (show-template state local)
+        (load-collection state local)
         (recur)))))

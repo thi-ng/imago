@@ -37,8 +37,7 @@
       (info "saving graph to:" url)
       (->> @g
            (trio/select)
-           (group-by first)
-           (reduce-kv (fn [acc k v] (assoc acc k (mapv #(->> % (drop 1) vec) v))) {})
+           (api/pack-triples)
            (pr-str)
            (spit url))
       (catch Exception e

@@ -11,3 +11,12 @@
 (defprotocol ImagoGraphIO
   (load-graph [_ url opts])
   (save-graph [_ url opts]))
+
+(defn pack-triples
+  [triples]
+  (->> triples
+       (group-by first)
+       (reduce-kv
+        (fn [acc k v]
+          (assoc acc k (mapv #(->> % (drop 1) vec) v)))
+        {})))

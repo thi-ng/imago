@@ -95,7 +95,9 @@
             :pass [(v/required) (v/min-length 4) (v/max-length 40)]}
            :upload
            {:user [(v/required)]
-            :coll-id [(v/required) (v/uuid4)]}}}
+            :coll-id [(v/required) (v/uuid4)]}
+           :get-collection
+           {:coll-id [(v/required) (v/uuid4)]}}}
 
    :queries
    {:login
@@ -129,7 +131,16 @@
                         ['?preset (:width imago) '?w]
                         ['?preset (:height imago) '?h]
                         ['?preset (:format dct) '?mime]]}]
-       :group '[?id ?version]})
+       :group '?id})
+
+    :describe-collection
+    (fn [coll-id]
+      {:describe '[?x ?i ?v]
+       :query [{:where '[[?x "rdf:type" "imago:MediaCollection"]
+                         [?i "dct:isPartOf" ?x]
+                         [?i "dct:hasVersion" ?v]]
+                :values {'?x coll-id}}]})
+    
     :collection-presets
     (fn [coll-id]
       {:select :*
@@ -140,7 +151,15 @@
                         ['?preset (:crop imago) '?crop]
                         ['?preset (:filter imago) '?filter]
                         ['?preset (:format dct) '?mime]]}]
-       :group '?preset})}
+       :group '?preset})
+
+    :media-item-version
+    (fn [version]
+      {:select '[?id ?mime]
+       :query [{:where [['?id (:type rdf) (:StillImage imago)]
+                        ['?id (:hasVersion dct) version]
+                        [version (:references dct) '?preset]
+                        ['?preset (:format dct) '?mime]]}]})}
    :ui
    {:dev  {:css ["/css/bootstrap.min.css"
                  "/css/bootstrap-theme.min.css"
