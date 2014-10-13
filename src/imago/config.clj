@@ -136,11 +136,11 @@
     :describe-collection
     (fn [coll-id]
       {:describe '[?x ?i ?v]
-       :query [{:where '[[?x "rdf:type" "imago:MediaCollection"]
-                         [?i "dct:isPartOf" ?x]
-                         [?i "dct:hasVersion" ?v]]
-                :values {'?x coll-id}}]})
-    
+       :query [{:where '[[?x "rdf:type" "imago:MediaCollection"]]
+                :values {'?x coll-id}}
+               {:optional '[[?i "dct:isPartOf" ?x]
+                            [?i "dct:hasVersion" ?v]]}]})
+
     :collection-presets
     (fn [coll-id]
       {:select :*
