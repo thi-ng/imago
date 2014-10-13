@@ -47,7 +47,6 @@
        (:nick foaf) "admin"
        (:name foaf) "Imago Admin"
        (:password foaf) (utils/sha-256 "admin" "imago" salt)
-       (:creator dct) coll
        (:hasRole imago) (:AdminRole imago)}}
      [(:AdminRole imago) "dct:accessRights"
       ["view-any" "edit-any" "create-coll" "upload" "maintenance"]]
@@ -58,6 +57,7 @@
      {coll
       {(:type rdf) (:MediaCollection imago)
        (:title dct) "Untitled collection"
+       (:creator dct) admin
        (:usesPreset imago) (map :id (vals presets))}}
      (reduce-kv
       (fn [acc k {:keys [id width height crop filter mime]}]
@@ -110,7 +110,7 @@
       {:select '[?id ?title]
        :query [{:where [['?u (:type rdf) (:User imago)]
                         ['?u (:nick foaf) user]
-                        ['?u (:creator dct) '?id]
+                        ['?id (:creator dct) '?u]
                         ['?id (:type rdf) (:MediaCollection imago)]
                         ['?id (:title dct) '?title]]}]})
     :get-collection
