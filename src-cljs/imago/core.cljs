@@ -5,7 +5,7 @@
    [imago.config :as config]
    [imago.home :as home]
    [imago.user :as user]
-   [imago.upload :as upload]
+   [imago.collection :as coll]
    [imago.login :as login]
    [imago.alerts :as alerts]
    [thi.ng.cljs.async :as async]
@@ -20,9 +20,10 @@
    [cljs.core.async :refer [<! alts! timeout]]))
 
 (def modules
-  {:home {:init home/init :enabled true}
-   :user {:init user/init}
-   :upload {:init upload/init}})
+  {:home       {:init home/init :enabled true}
+   :user       {:init user/init}
+   :collection {:init coll/init}
+   :image      {}})
 
 (defn build-nav
   [nav-routes sel-id user]
@@ -51,14 +52,16 @@
              [:ul.nav.navbar-nav.navbar-right
               (if (:user @state)
                 [:li [:a {:href "#"
-                          :events [[:click (fn [e]
-                                             (.preventDefault e)
-                                             (login/handle-logout (:bus @state)))]]}
+                          :events [[:click
+                                    (fn [e]
+                                      (.preventDefault e)
+                                      (login/handle-logout (:bus @state)))]]}
                       "Logout"]]
                 [:li [:a {:href "#"
-                          :events [[:click (fn [e]
-                                             (.preventDefault e)
-                                             (login/login-dialog (:bus @state)))]]}
+                          :events [[:click
+                                    (fn [e]
+                                      (.preventDefault e)
+                                      (login/login-dialog (:bus @state)))]]}
                       "Login"]])]]]]))))
 
 (defn transition-controllers
@@ -114,32 +117,6 @@
     (listen-route-change bus)
     (route/start-router! router)))
 
-(defn login-watcher
-  [bus state]
-  (let [subs  (async/subscription-channels
-               bus [:login-success :login-fail :logout-success :logout-fail])
-        chans (vec (vals subs))]
-    (go-loop []
-      (let [[[_ user] ch] (alts! chans)]
-        (condp = ch
-          (:login-success subs)  (do
-                                   (info :user-logged-in user)
-                                   (swap! state assoc :user user)
-                                   (route/set-route! "user" (:user-name user)))
-          (:login-fail subs)     (do
-                                   (alerts/alert
-                                    [:div [:strong "Login failed!"] " Please try again..."]
-                                    (:app-root config/app)))
-          (:logout-success subs) (do
-                                   (info :user-logged-out)
-                                   (swap! state dissoc :user)
-                                   (route/set-route! "/"))
-          (:logout-fail subs)    (do
-                                   (alerts/alert
-                                    [:div [:strong "Logout failed!"] " Please try again..."]
-                                    (:app-root config/app))))
-        (recur)))))
-
 (defn make-app-state
   [bus]
   (atom {:bus bus
@@ -159,6 +136,6 @@
     (init-router
      bus state
      (:routes config/app) (:default-route-id config/app))
-    (login-watcher bus state)))
+    (login/login-watcher bus state)))
 
 (.addEventListener js/window "load" start)

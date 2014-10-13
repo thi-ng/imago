@@ -11,7 +11,6 @@
    [thi.ng.cljs.io :as io]
    [cljs.core.async :refer [<! timeout]]))
 
-
 (defn show-template
   [state]
   (let [user (:user @state)
@@ -32,7 +31,7 @@
            (for [{:keys [id title thumb]} colls]
              [:div.row
               [:div.col-xs-2 [:img {:src thumb}]]
-              [:div.col-xs-6 [:a {:href (str "#/user/" user "/collections/" id)} [:h2 title]]]])]))))
+              [:div.col-xs-6 [:a {:href (str "#/collections/" id)} [:h2 title]]]])]))))
 
 (defn load-collections
   [state]

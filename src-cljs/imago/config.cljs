@@ -10,23 +10,24 @@
    :modal-root (dom/by-id "imago-modals")
 
    :nav-items
-   {:anon []
+   {:anon [{:id :about :route "#/about" :label "About"}]
     :user [{:id :user :route "#/user/{{user}}" :label "My account"}
-           {:id :upload :route "#/upload" :label "Upload"}]}
+           {:id :about :route "#/about" :label "About"}]}
 
    :routes
    [{:match ["home"] :controller :home :route ["home"]}
-    {:match ["upload"] :controller :upload}
-    {:match ["user" :user] :controller :user}
-    {:match ["logout"] :controller :logout}]
+    {:match ["about"] :controller :home}
+    {:match ["collections" :id] :controller :collection}
+    {:match ["media" :id] :controller :media}
+    {:match ["users" :user] :controller :user}]
    :default-route-id 0
 
    :api-routes
    {:get-object (fn [id] (str "objects/" id))
     :user-collections (fn [user] (str "/user/" user "/collections"))
+    :collection (fn [id] (str "/media/collections/" id))
     :login      (constantly "/user/login")
     :logout     (constantly "/user/logout")
-    :upload     (fn [id] (str "/media/collections/" id))
     }
 
    :api-inject {}
