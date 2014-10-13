@@ -41,12 +41,19 @@
 
 (defn remove-file
   [local id]
+  (swap! local update-in [:files] dissoc id)
+  (dom/remove! (dom/by-id id))
+  (when (empty? (:files @local))
+    (dom/show! (dom/by-id "drop-msg"))))
+
+(defn remove-all-files
+  [state local])
+
+(defn remove-file*
+  [local id]
   (fn [e]
     (.preventDefault e)
-    (swap! local update-in [:files] dissoc id)
-    (dom/remove! (dom/by-id id))
-    (when (empty? (:files @local))
-      (dom/show! (dom/by-id "drop-msg")))))
+    (remove-file local id)))
 
 (defn add-files
   [state local]
@@ -65,7 +72,7 @@
               (dom/create-dom!
                [:div.row {:id id}
                 [:div.col-xs-1
-                 [:button.close {:type "button" :events [[:click (remove-file local id)]]} "\u00D7"]]
+                 [:button.close {:type "button" :events [[:click (remove-file* local id)]]} "\u00D7"]]
                 [:div.col-xs-5 fname]
                 [:div.col-xs-2 (ff/format [KB "KB"] fsize)]
                 [:div.col-xs-4
@@ -77,6 +84,42 @@
       (dom/remove-class! (dom/by-id "dropzone-wrapper") "dropzone-active")
       (debug @local))))
 
+(defn show-template
+  [state local]
+  (->> (:app-root config/app)
+       (dom/clear!)
+       (dom/create-dom!
+        [:div
+         [:div.row
+          [:div.col-xs-12
+           [:h2 (:title @local)]]]
+         (when (= (:owner @local) (-> @state :user :id))
+           (list
+            [:div#dropzone-wrapper.jumbotron
+             {:events [[:dragenter (fn [e] (dom/add-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
+                       [:dragleave (fn [e] (dom/remove-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
+                       [:drop (add-files state local)]]}
+             [:div#dropzone.container
+              [:h2#drop-msg.text-center "Drop media files here"]]]
+            [:div.row
+             [:div.col-xs-12
+              [:button#bt-upload.btn.btn-primary.btn-lg
+               {:events [[:click (upload-files state local)]]}
+               "Upload media"] " "
+              [:button#bt-upload.btn.btn-default.btn-lg
+               {:disabled "disabled"
+                :events [[:click (remove-all-files state local)]]}
+               "Cancel all"]]]))
+         [:div.row
+          [:div.col-xs-12
+           [:h3 [:span.label.label-default (count (:items @local))] " items in collection..."]]]
+         [:div.row
+          (for [{:syms [?thumb ?xl]} (:items @local)]
+            [:div.col-xs-2
+             [:a.thumbnail {:href (str "/media/image/" ?xl)}
+              [:img {:src (str "/media/image/" ?thumb)}]]])]
+         ])))
+
 (defn load-collection
   [state local]
   (io/request
@@ -84,41 +127,26 @@
    :method  :get
    :edn?    true
    :success (fn [status body]
-              (let [coll (trio/as-model (:body body))
-                    thumbs (q/query {:select :* :from coll
-                                     :query [{:where '[[?img "dct:hasVersion" ?thumb]
-                                                       [?img "dct:hasVersion" ?xl]
-                                                       [?thumb "dct:references"
-                                                        "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]
-                                                       [?xl "dct:references"
-                                                        "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"]]}]})]
-                (dom/create-dom!
-                 [:div.row
-                  (for [{:syms [?thumb ?xl]} thumbs]
-                    [:div.col-xs-2
-                     [:a.thumbnail {:href (str "/media/image/" ?xl)}
-                      [:img {:src (str "/media/image/" ?thumb)}]]])]
-                 (:app-root config/app))
-                (async/publish (:bus @state) :load-coll-success coll)))
+              (let [graph (trio/as-model (:body body))
+                    title (-> graph (trio/select (:id @local) "dct:title" nil) (first) (peek))
+                    owner (-> graph (trio/select (:id @local) "dct:creator" nil) (first) (peek))
+                    items (q/query {:select :* :from graph
+                                    :query [{:where '[[?img "dct:hasVersion" ?thumb]
+                                                      [?img "dct:hasVersion" ?xl]
+                                                      [?thumb "dct:references"
+                                                       "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]
+                                                      [?xl "dct:references"
+                                                       "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"]]}]})]
+                (swap!
+                 local assoc
+                 :title title
+                 :owner owner
+                 :items items
+                 :graph graph)
+                (show-template state local)))
    :error   (fn [status body]
               (warn :error-response status body)
               (async/publish (:bus @state) :load-coll-fail (:body body)))))
-
-(defn show-template
-  [state local]
-  (->> (:app-root config/app)
-       (dom/clear!)
-       (dom/create-dom!
-        [:div
-         [:div#dropzone-wrapper.jumbotron
-          {:events [[:dragenter (fn [e] (dom/add-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
-                    [:dragleave (fn [e] (dom/remove-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
-                    [:drop (add-files state local)]]}
-          [:div#dropzone.container
-           [:h2#drop-msg.text-center "Drop media files here"]]]
-         [:button#bt-upload.btn.btn-primary.btn-lg
-          {:events [[:click (upload-files state local)]]}
-          "Upload media"]])))
 
 (defn init
   [bus]
@@ -133,6 +161,5 @@
     (go-loop []
       (let [[_ [state {:keys [id]}]] (<! init)]
         (swap! local assoc :id id :files {})
-        (show-template state local)
         (load-collection state local)
         (recur)))))
