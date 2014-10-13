@@ -11,12 +11,12 @@
 
    :nav-items
    {:anon [{:id :about :route "#/about" :label "About"}]
-    :user [{:id :user :route "#/user/{{user}}" :label "My account"}
+    :user [{:id :user :route "#/users/{{user}}" :label "My account"}
            {:id :about :route "#/about" :label "About"}]}
 
    :routes
    [{:match ["home"] :controller :home :route ["home"]}
-    {:match ["about"] :controller :home}
+    {:match ["about"] :controller :about}
     {:match ["collections" :id] :controller :collection}
     {:match ["media" :id] :controller :media}
     {:match ["users" :user] :controller :user}]

@@ -18,10 +18,9 @@
         [:div.jumbotron
          [:h1 "Welcome to imago"]
          [:p "Graph all your media!"]
-         [:p
-          [:a.btn.btn-primary.btn-lg
-           {:href "#/register"}
-           "Register"]]])))
+         [:p [:a.btn.btn-primary.btn-lg
+              {:href "#/register"}
+              "Register"]]])))
 
 (defn init
   [bus]

@@ -86,15 +86,18 @@
    :success (fn [status body]
               (let [coll (trio/as-model (:body body))
                     thumbs (q/query {:select :* :from coll
-                                     :query [{:where '[[?v "dct:references"
-                                                        "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]]}]})]
-                (info :thumbs thumbs)
+                                     :query [{:where '[[?img "dct:hasVersion" ?thumb]
+                                                       [?img "dct:hasVersion" ?xl]
+                                                       [?thumb "dct:references"
+                                                        "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]
+                                                       [?xl "dct:references"
+                                                        "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"]]}]})]
                 (dom/create-dom!
                  [:div.row
-                  (for [{:syms [?v]} thumbs]
+                  (for [{:syms [?thumb ?xl]} thumbs]
                     [:div.col-xs-2
-                     [:a.thumbnail {:href "#"}
-                      [:img {:src (str "/media/image/" ?v)}]]])]
+                     [:a.thumbnail {:href (str "/media/image/" ?xl)}
+                      [:img {:src (str "/media/image/" ?thumb)}]]])]
                  (:app-root config/app))
                 (async/publish (:bus @state) :load-coll-success coll)))
    :error   (fn [status body]
