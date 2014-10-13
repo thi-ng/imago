@@ -172,7 +172,9 @@
          (wrapped-api-handler
           req (assoc (:params req) :user (get-in req [:session :user])) :upload
           (fn [req params]
-            (let [files (filter :tempfile (vals (:params req)))
+            (let [user-id (-> params :user :id)
+                  tstamp  (utils/timestamp)
+                  files (filter :tempfile (vals (:params req)))
                   presets (->> (config/query-spec :collection-presets coll-id)
                                (gapi/query graph)
                                (vals)
@@ -181,24 +183,33 @@
                   _ (info :files (map :filename files))
                   _ (info :presets presets)
                   _ (info :tmp-file tmp)
-                  items (->> (for [[id file] (zipmap (repeatedly utils/new-uuid) files)
-                                   {:syms [?w ?h ?mime ?preset ?crop ?filter]} presets]
-                               [id (:tempfile file) tmp ?w ?h ?crop ?filter ?mime ?preset])
-                             (reduce
-                              (fn [acc [id src dest w h crop filter mime preset]]
-                                (info "processing image: " src w h)
-                                (image/resize-image
-                                 {:src src
-                                  :dest dest
-                                  :type (subs (config/mime-ext mime) 1)
-                                  :width w
-                                  :height h
-                                  :crop crop
-                                  :filter filter})
-                                (sapi/put-object storage dest (str id "-" preset (config/mime-ext mime)) {})
-                                (conj acc id))
-                              []))]
-              (api-response req items 200)))))))
+                  [ids triples] (->>
+                                 (for [[id file] (zipmap (repeatedly utils/new-uuid) files)
+                                       {:syms [?w ?h ?mime ?preset ?crop ?filter]} presets]
+                                   [id (:tempfile file) tmp ?w ?h ?crop ?filter ?mime ?preset])
+                                 (reduce
+                                  (fn [[ids triples] [id src dest w h crop filter mime preset]]
+                                    (let [version (str id "-" preset)]
+                                      (image/resize-image
+                                       {:src src
+                                        :dest dest
+                                        :type (subs (config/mime-ext mime) 1)
+                                        :width w
+                                        :height h
+                                        :crop crop
+                                        :filter filter})
+                                      (sapi/put-object storage dest (str version (config/mime-ext mime)) {})
+                                      [(conj ids id)
+                                       (into triples
+                                             [[id (:type rdf) (:StillImage imago)]
+                                              [id (:isPartOf dct) coll-id]
+                                              [id (:creator dct) user-id]
+                                              [id (:dateSubmitted dct) tstamp]
+                                              [id (:hasVersion dct) version]
+                                              [version (:references dct) preset]])]))
+                                  [#{} []]))]
+              (gapi/add-triples graph triples)
+              (api-response req (vec ids) 200)))))))
 
 (defroutes all-routes
   (GET "/" [] (:home page-cache))

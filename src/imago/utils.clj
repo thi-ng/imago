@@ -1,4 +1,7 @@
 (ns imago.utils
+  (:require
+   [clj-time.core :as cljt]
+   [clj-time.coerce :as cljtc])
   (:import
    [java.security NoSuchAlgorithmException MessageDigest]))
 
@@ -13,3 +16,5 @@
 
 (defn str-contains?
   [^String str ^String x] (not (neg? (.indexOf str x))))
+
+(defn timestamp [] (-> (cljt/now) cljtc/to-long))

@@ -28,18 +28,20 @@
   (vals (select-keys mime-types [:edn :json])))
 
 (def default-graph
-  (let [presets {:thumb-gray {:id "581cfd98-32f4-4c5d-845c-29c45539cf7e"
-                              :width 200 :height 200 :crop true :filter :grayscale :mime :png}
-                 :thumb-rgb  {:id "b23dd8c0-10d6-4b2d-99b0-5a39101691a3"
-                              :width 200 :height 200 :crop true :mime :jpg}
-                 :small      {:id "296e1cfd-9fb7-4af7-9714-57f177e60ad5"
-                              :width 320 :height 240 :mime :jpg}
-                 :hd360      {:id "3c253c5d-a0cb-42df-964d-8167ddae818f"
-                              :width 640 :height 360 :crop true :mime :jpg}
-                 :hd720-crop {:id "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"
-                              :width 1280 :height 720 :crop true :mime :jpg}
-                 :hd720      {:id "adf8457f-64bf-4875-a713-faa8063eaba7"
-                              :width 1280 :height 720 :mime :jpg}}
+  (let [presets {:thumb-imago {:id "617e6192-d1a3-4422-b3cc-d7fcfb782de5"
+                               :width 160 :height 160 :crop true :mime :jpg}
+                 :thumb-gray  {:id "581cfd98-32f4-4c5d-845c-29c45539cf7e"
+                               :width 200 :height 200 :crop true :filter :grayscale :mime :jpg}
+                 :thumb-rgb   {:id "b23dd8c0-10d6-4b2d-99b0-5a39101691a3"
+                               :width 200 :height 200 :crop true :mime :jpg}
+                 :small       {:id "296e1cfd-9fb7-4af7-9714-57f177e60ad5"
+                               :width 320 :height 240 :mime :jpg}
+                 :hd360       {:id "3c253c5d-a0cb-42df-964d-8167ddae818f"
+                               :width 640 :height 360 :crop true :mime :jpg}
+                 :hd720-crop  {:id "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"
+                               :width 1280 :height 720 :crop true :mime :jpg}
+                 :hd720       {:id "adf8457f-64bf-4875-a713-faa8063eaba7"
+                               :width 1280 :height 720 :mime :jpg}}
         admin   (utils/new-uuid)
         coll    (utils/new-uuid)]
     [{admin

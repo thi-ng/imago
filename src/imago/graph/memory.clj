@@ -10,6 +10,12 @@
   api/ImagoGraph
   (update-user
     [_ user])
+  (add-triples
+    [_ triples]
+    (dosync
+     (info "adding triples:" (count triples))
+     (ref-set g (trio/add-bulk @g triples))
+     (api/save-graph _ (-> conf :memory :path) {})))
   (query [_ qspec]
     (q/query (assoc qspec :from @g)))
 
