@@ -44,7 +44,8 @@
   (swap! local update-in [:files] dissoc id)
   (dom/remove! (dom/by-id id))
   (when (empty? (:files @local))
-    (dom/show! (dom/by-id "drop-msg"))))
+    (dom/show! (dom/by-id "drop-msg"))
+    (dom/add-class! (dom/by-id "bt-upload") "disabled")))
 
 (defn remove-all-files
   [state local])
@@ -82,6 +83,7 @@
               (swap! local update-in [:files] assoc id file))
             (recur (inc i)))))
       (dom/remove-class! (dom/by-id "dropzone-wrapper") "dropzone-active")
+      (dom/remove-class! (dom/by-id "bt-upload") "disabled")
       (debug @local))))
 
 (defn show-template
@@ -103,10 +105,10 @@
               [:h2#drop-msg.text-center "Drop media files here"]]]
             [:div.row
              [:div.col-xs-12
-              [:button#bt-upload.btn.btn-primary.btn-lg
+              [:button#bt-upload.btn.btn-primary.btn-lg.disabled
                {:events [[:click (upload-files state local)]]}
                "Upload media"] " "
-              [:button#bt-upload.btn.btn-default.btn-lg
+              [:button#bt-upload-cancel.btn.btn-default.btn-lg
                {:disabled "disabled"
                 :events [[:click (remove-all-files state local)]]}
                "Cancel all"]]]))
@@ -115,7 +117,7 @@
            [:h3 [:span.label.label-default (count (:items @local))] " items in collection..."]]]
          [:div.row
           (for [{:syms [?thumb ?xl]} (:items @local)]
-            [:div.col-xs-2
+            [:div.col-xs-4.col-md-2
              [:a.thumbnail {:href (str "/media/image/" ?xl)}
               [:img {:src (str "/media/image/" ?thumb)}]]])]
          ])))
