@@ -8,6 +8,7 @@
    [imago.image :as image]
    [imago.utils :as utils]
    [thi.ng.validate.core :as v]
+   [thi.ng.trio.core :as trio]
    [thi.ng.trio.query :as q]
    [ring.util.response :as resp]
    [ring.util.codec :as codec]
@@ -24,8 +25,7 @@
 
 (def page-cache
   {:home
-   (html5
-    [:head
+   [[:head
      [:title "imago"]
      [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
      (apply include-css (-> config/app :ui (config/mode) :css))]
@@ -36,7 +36,7 @@
      (apply include-js (-> config/app :ui (config/mode) :js))
      (el/javascript-tag
       (str "var __IMAGO_CONFIG__="
-           (or (-> config/app :ui (config/mode) :override-config) "null") ";"))])})
+           (or (-> config/app :ui (config/mode) :override-config) "null") ";"))]]})
 
 (defn request-signature
   [uri params key]
@@ -221,10 +221,31 @@
                                               [version (:references dct) preset]])]))
                                   [#{} []]))]
               (gapi/add-triples graph triples)
-              (api-response req (vec ids) 200)))))))
+              (api-response req (vec ids) 200)))))
+   (POST "/collections" [:as req]
+         (wrapped-api-handler
+          req (assoc (:params req) :user (get-in req [:session :user])) :new-collection
+          (fn [req {:keys [user title]}]
+            (info :new-coll user title)
+            (let [user-id (:id user)
+                  coll-id (utils/new-uuid)
+                  title (or title "Untitled collection")
+                  triples (trio/triple-seq
+                           {coll-id
+                            {(:type rdf) (:MediaCollection imago)
+                             (:title dct) title
+                             (:creator dct) user-id}})]
+              (gapi/add-triples graph triples)
+              (api-response req {:id coll-id :title title} 201)))))))
 
 (defroutes all-routes
-  (GET "/" [] (:home page-cache))
+  (GET "/" [:as req]
+       (let [user (if-let [user (get-in req [:session :user])]
+                    (str \' user \') "null")]
+         (-> (:home page-cache)
+             (update-in [1] conj (el/javascript-tag (str "var __IMAGO_USER__=" user ";")))
+             (seq)
+             (html5))))
   (context "/user" [] user-routes)
   (context "/media" [] media-routes)
   (route/not-found "404"))

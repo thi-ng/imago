@@ -17,6 +17,7 @@
    [thi.ng.cljs.detect :as detect]
    [goog.events :as events]
    [clojure.string :as str]
+   [cljs.reader :refer [read-string]]
    [cljs.core.async :refer [<! alts! timeout]]))
 
 (def modules
@@ -120,8 +121,9 @@
     (route/start-router! router)))
 
 (defn make-app-state
-  [bus]
+  [bus user]
   (atom {:bus bus
+         :user user
          :modules (reduce-kv
                    (fn [acc k {:keys [init enabled] :as v}]
                      (if-not (= false enabled)
@@ -134,7 +136,8 @@
   []
   (config/set-config! "__IMAGO_CONFIG__")
   (let [bus   (async/pub-sub (fn [e] (debug :bus (first e)) (first e)))
-        state (make-app-state bus)]
+        user  (when-let [user js/__IMAGO_USER__] (read-string user))
+        state (make-app-state bus user)]
     (init-router
      bus state
      (:routes config/app) (:default-route-id config/app))

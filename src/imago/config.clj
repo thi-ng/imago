@@ -97,7 +97,10 @@
            {:user [(v/required)]
             :coll-id [(v/required) (v/uuid4)]}
            :get-collection
-           {:coll-id [(v/required) (v/uuid4)]}}}
+           {:coll-id [(v/required) (v/uuid4)]}
+           :new-collection
+           {:user [(v/required "must be authenticated")]
+            :title [(v/optional (v/max-length 64))]}}}
 
    :queries
    {:login
