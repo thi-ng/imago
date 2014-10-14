@@ -133,10 +133,12 @@
                     items (q/query {:select :* :from graph
                                     :query [{:where '[[?img "dct:hasVersion" ?thumb]
                                                       [?img "dct:hasVersion" ?xl]
+                                                      [?img "dct:dateSubmitted" ?time]
                                                       [?thumb "dct:references"
                                                        "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]
                                                       [?xl "dct:references"
-                                                       "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"]]}]})]
+                                                       "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"]]}]
+                                    :order-desc '?time})]
                 (swap!
                  local assoc
                  :title title
