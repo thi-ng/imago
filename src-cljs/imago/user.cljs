@@ -20,7 +20,10 @@
          (dom/create-dom!
           [:div.jumbotron
            [:h1 (str "Welcome back, " uname)]
-           [:p "Here're your collections..."]]))))
+           [:p "Here're your collections..."]
+           [:p [:button.btn.btn-primary.btn-lg
+                {:events []}
+                [:span.glyphicon.glyphicon-plus] " New collection"]]]))))
 
 (defn show-collections
   [state colls]
