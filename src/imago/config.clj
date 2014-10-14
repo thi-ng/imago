@@ -99,7 +99,7 @@
            :get-collection
            {:coll-id [(v/required) (v/uuid4)]}
            :new-collection
-           {:user [(v/required "must be authenticated")]
+           {:user {:perms [(v/required-keys ["create-coll"] "insufficient permission")]}
             :title [(v/optional (v/max-length 64))]}}}
 
    :queries
