@@ -103,14 +103,15 @@
          (filtered-triple-seq))))
 
 (defrecord MediaVersion
-    [id type preset]
+    [id type preset rights]
   trio/PTripleSeq
   (triple-seq
     [_]
     (filtered-triple-seq
      {id
       {(:type rdf) type
-       (:references dcterms) preset}})))
+       (:references dcterms) preset
+       (:accessRights dcterms) rights}})))
 
 (defn make-user
   [{:keys [id type role created]
@@ -159,17 +160,24 @@
     :as   opts}]
   (map->RightsStatement (assoc opts :id id)))
 
+(defn add-entity-rights
+  [e rights]
+  (->> rights
+       (reduce
+        (fn [[e rs] r]
+          (let [r (make-rights-statement (assoc r :context (:id e)))]
+            [(update-in e [:rights] conj (:id r))
+             (conj rs r)]))
+        [e []])
+       (apply cons)))
+
+(defn make-repo-with-rights
+  [repo & rights]
+  (-> repo make-repo (add-entity-rights rights)))
+
 (defn make-collection-with-rights
   [coll & rights]
-  (let [coll   (make-collection coll)]
-    (->> rights
-         (reduce
-          (fn [[coll rs] r]
-            (let [r (make-rights-statement (assoc r :context (:id coll)))]
-              [(update-in coll [:rights] conj (:id r))
-               (conj rs r)]))
-          [coll []])
-         (apply cons))))
+  (-> coll make-collection (add-entity-rights rights)))
 
 (defn make-image-version-preset
   [{:keys [id title restrict mime]
@@ -196,3 +204,7 @@
            type (:ImageVersion imago)}
     :as   opts}]
   (map->MediaVersion (assoc opts :id id :type type)))
+
+(defn make-media-version-with-rights
+  [v & rights]
+  (-> v make-media-version (add-entity-rights rights)))
