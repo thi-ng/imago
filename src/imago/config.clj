@@ -47,7 +47,7 @@
                                 :width 1280 :mime :jpg}}
         presets' (map
                   (fn [[k {:keys [mime filter crop] :as v}]]
-                    (model/make-version-preset
+                    (model/make-image-version-preset
                      (merge v {:title (name k)
                                :mime (mime-types mime)
                                :filter (name (or filter :none))
