@@ -167,11 +167,11 @@
        :query [{:where [[coll-id (:type rdf) (:MediaCollection imago)]
                         [coll-id (:usesPreset imago) '?preset]
                         ['?preset (:restrict imago) '?src-mime]
-                        ['?preset (:width imago) '?w]
-                        ['?preset (:height imago) '?h]
                         ['?preset (:crop imago) '?crop]
                         ['?preset (:filter imago) '?filter]
-                        ['?preset (:format dcterms) '?mime]]}]
+                        ['?preset (:format dcterms) '?mime]]}
+               {:optional [['?preset (:width imago) '?w]]}
+               {:optional [['?preset (:height imago) '?h]]}]
        :group '?preset
        :aggregate {'?restrict {:use '?src-mime :fn #(into #{} %)}}})
 

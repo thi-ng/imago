@@ -7,7 +7,7 @@
    [slingshot.slingshot :refer [throw+]]))
 
 (defn filtered-triple-seq
-  [xs] (->> xs (trio/triple-seq) (filter last)))
+  [xs] (->> xs (trio/triple-seq) (filter #(-> % last nil? not))))
 
 (defrecord User
     [id type
