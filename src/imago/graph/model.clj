@@ -1,4 +1,4 @@
-(ns imago.model
+(ns imago.graph.model
   (:require
    [imago.graph.vocab :refer :all]
    [imago.utils :as utils]
@@ -88,17 +88,17 @@
   trio/PTripleSeq
   (triple-seq
     [_]
-    (->> [{id
-           {(:type rdf) (:StillImage dctypes)
-            (:isPartOf dcterms) coll-id
-            (:title dcterms) title
-            (:creator dcterms) creator
-            (:contributor dcterms) contributor
-            (:publisher dcterms) publisher
-            (:dateSubmitted dcterms) submitted
-            (:hasVersion dcterms) (map :id versions)}}]
-         (concat versions)
-         (filtered-triple-seq))))
+    (-> [{id
+          {(:type rdf) (:StillImage dctypes)
+           (:isPartOf dcterms) coll-id
+           (:title dcterms) title
+           (:creator dcterms) creator
+           (:contributor dcterms) contributor
+           (:publisher dcterms) publisher
+           (:dateSubmitted dcterms) submitted
+           (:hasVersion dcterms) (map :id versions)}}]
+        (concat versions)
+        (filtered-triple-seq))))
 
 (defrecord MediaVersion
     [id type preset rights]
@@ -204,3 +204,37 @@
 (defn make-media-version-with-rights
   [v & rights]
   (-> v make-media-version (add-entity-rights rights)))
+
+(defn default-graph
+  [{:keys [presets salt mime-types]}]
+  (let [presets  (map
+                  (fn [[k {:keys [mime filter crop] :as v}]]
+                    (->> {:title (name k)
+                          :mime (mime-types mime)
+                          :filter (name (or filter :none))
+                          :crop (boolean crop)}
+                         (merge v)
+                         (make-image-version-preset)))
+                  presets)
+        admin    (make-user
+                  {:type (:User imago)
+                   :user-name "admin"
+                   :name "Imago Admin"
+                   :password (utils/sha-256 "admin" "imago" salt)})
+        anon     (make-user {})
+        repo     (make-repo-with-rights
+                  {}
+                  {:user (:id admin) :perm (:canEditRepo imago)}
+                  {:user (:id admin) :perm (:canCreateColl imago)})
+        coll     (make-collection-with-rights
+                  {:creator (:id admin)
+                   :parent (:id repo)
+                   :presets (map :id presets)}
+                  {:user (:id admin) :perm (:canEditColl imago)}
+                  {:user (:id anon) :perm (:canViewColl imago)})]
+    (concat
+     (load-vocab-triples "vocabs/imago.edn")
+     [admin anon]
+     repo
+     coll
+     presets)))

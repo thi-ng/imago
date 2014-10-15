@@ -4,6 +4,7 @@
    [imago.providers :refer [storage graph]]
    [imago.graph.api :as gapi]
    [imago.graph.vocab :refer :all]
+   [imago.graph.model :as model]
    [imago.storage.api :as sapi]
    [imago.image :as image]
    [imago.utils :as utils]
@@ -188,58 +189,65 @@
                   presets (->> (config/query-spec :collection-presets coll-id)
                                (gapi/query graph)
                                (vals)
-                               (map first))
-                  tmp (File/createTempFile "imago" nil)
-                  now (utils/timestamp)
+                               (map first)
+                               (map #(let [{:syms [?preset ?w ?h ?crop ?filter ?mime ?restrict]} %]
+                                       [?preset ?w ?h ?crop ?filter ?mime ?restrict])))
+                  images  (zipmap
+                           (repeatedly #(model/make-image {:coll-id coll-id :publisher user-id}))
+                           (map :tempfile files))
+                  tmp     (File/createTempFile "imago" nil)
+                  now     (utils/timestamp)
                   _ (info :files (map :filename files))
                   _ (info :presets presets)
-                  _ (info :tmp-file tmp)
-                  [ids triples] (->>
-                                 (for [[id file] (zipmap (repeatedly utils/new-uuid) files)
-                                       {:syms [?w ?h ?mime ?preset ?crop ?filter]} presets]
-                                   [id (:tempfile file) tmp ?w ?h ?crop ?filter ?mime ?preset])
-                                 (reduce
-                                  (fn [[ids triples] [id src dest w h crop filter mime preset]]
-                                    (let [version (str id "-" preset)]
-                                      (image/resize-image
-                                       {:src src
-                                        :dest dest
-                                        :type (subs (config/mime-ext mime) 1)
-                                        :width w
-                                        :height h
-                                        :crop crop
-                                        :filter filter})
-                                      (sapi/put-object storage dest (str version (config/mime-ext mime)) {})
-                                      [(conj ids id)
-                                       (into triples
-                                             [[id (:type rdf) (:StillImage dctypes)]
-                                              [id (:isPartOf dcterms) coll-id]
-                                              [id (:creator dcterms) user-id]
-                                              [id (:dateSubmitted dcterms) now]
-                                              [id (:hasVersion dcterms) version]
-                                              [version (:references dcterms) preset]])]))
-                                  [#{} [[coll-id (:modified dcterms) now]]]))]
-              (gapi/add-triples graph triples)
-              (api-response req (vec ids) 200)))))
+                  images  (->> images
+                               (reduce-kv
+                                (fn [acc img file]
+                                  (->> presets
+                                       ;; TODO restrict check
+                                       (reduce
+                                        (fn [img [pid w h crop flt mime restrict]]
+                                          (let [version (model/make-media-version
+                                                         {:id (str (:id img) "-" pid)
+                                                          :preset pid})]
+                                            (image/resize-image
+                                             {:src file
+                                              :dest tmp
+                                              :type (subs (config/mime-ext mime) 1)
+                                              :width w
+                                              :height h
+                                              :crop crop
+                                              :filter flt})
+                                            (sapi/put-object
+                                             storage tmp
+                                             (str (:id version) (config/mime-ext mime)) {})
+                                            (update-in img [:versions] conj version)))
+                                        img)
+                                       (conj acc)))
+                                []))]
+              (->> images
+                   (concat [[coll-id (:modifie dcterms) now]])
+                   (trio/triple-seq)
+                   (gapi/add-triples graph))
+              (api-response req (mapv :id images) 200)))))
    (PUT "/collections" [:as req]
-         (wrapped-api-handler
-          req (assoc (:params req) :user (get-in req [:session :user])) :new-collection
-          (fn [req {:keys [user title]}]
-            (info :new-coll user title)
-            (let [user-id (:id user)
-                  coll-id (utils/new-uuid)
-                  title   (or title "Untitled collection")
-                  now     (utils/timestamp)
-                  triples (trio/triple-seq
-                           {coll-id
-                            {(:type rdf) (:MediaCollection imago)
-                             (:title dcterms) title
-                             (:creator dcterms) user-id
-                             (:created dcterms) now
-                             (:modified dcterms) now
-                             (:accessRights dcterms) (:PublicRights imago)}})]
-              (gapi/add-triples graph triples)
-              (api-response req {:id coll-id :title title} 201)))))))
+        (wrapped-api-handler
+         req (assoc (:params req) :user (get-in req [:session :user])) :new-collection
+         (fn [req {:keys [user title]}]
+           (info :new-coll user title)
+           (let [user-id (:id user)
+                 coll-id (utils/new-uuid)
+                 title   (or title "Untitled collection")
+                 now     (utils/timestamp)
+                 triples (trio/triple-seq
+                          {coll-id
+                           {(:type rdf) (:MediaCollection imago)
+                            (:title dcterms) title
+                            (:creator dcterms) user-id
+                            (:created dcterms) now
+                            (:modified dcterms) now
+                            (:accessRights dcterms) (:PublicRights imago)}})]
+             (gapi/add-triples graph triples)
+             (api-response req {:id coll-id :title title} 201)))))))
 
 (defroutes all-routes
   (GET "/" [:as req]

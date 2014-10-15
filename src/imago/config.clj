@@ -1,7 +1,7 @@
 (ns imago.config
   (:require
    [imago.graph.vocab :refer :all]
-   [imago.model :as model]
+   [imago.graph.model :as model]
    [imago.utils :as utils]
    [thi.ng.validate.core :as v]
    [environ.core :refer [env]]))
@@ -28,56 +28,31 @@
 (def api-mime-types
   (vals (select-keys mime-types [:edn :json])))
 
-(def default-graph
-  (let [presets  (->> {:thumb-imago {:id "617e6192-d1a3-4422-b3cc-d7fcfb782de5"
-                                     :width 160 :height 160 :crop true :mime :jpg}
-                       :thumb-gray  {:id "581cfd98-32f4-4c5d-845c-29c45539cf7e"
-                                     :width 200 :height 200 :crop true :filter :grayscale :mime :jpg}
-                       :thumb-rgb   {:id "b23dd8c0-10d6-4b2d-99b0-5a39101691a3"
-                                     :width 200 :height 200 :crop true :mime :jpg}
-                       :small       {:id "296e1cfd-9fb7-4af7-9714-57f177e60ad5"
-                                     :width 320 :height 240 :mime :jpg}
-                       :hd360       {:id "3c253c5d-a0cb-42df-964d-8167ddae818f"
-                                     :width 640 :height 360 :crop true :mime :jpg}
-                       :hd720-crop  {:id "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"
-                                     :width 1280 :height 720 :crop true :mime :jpg}
-                       :hd720       {:id "adf8457f-64bf-4875-a713-faa8063eaba7"
-                                     :height 720 :mime :jpg}
-                       :hd1280      {:id "5d7f5d6b-c210-49c1-9e3e-59c4d15b18cd"
-                                     :width 1280 :mime :jpg}}
-                      (map
-                       (fn [[k {:keys [mime filter crop] :as v}]]
-                         (model/make-image-version-preset
-                          (merge v {:title (name k)
-                                    :mime (mime-types mime)
-                                    :filter (name (or filter :none))
-                                    :crop (boolean crop)})))))
-        admin    (model/make-user
-                  {:type (:User imago)
-                   :user-name "admin"
-                   :name "Imago Admin"
-                   :password (utils/sha-256 "admin" "imago" salt)})
-        anon     (model/make-user {})
-        repo     (model/make-repo-with-rights
-                  {} {:user (:id admin) :perm (:canEditRepo imago)}
-                  {:user (:id admin) :perm (:canCreateColl imago)})
-        coll     (model/make-collection-with-rights
-                  {:creator (:id admin)
-                   :parent (:id repo)
-                   :presets (map :id presets)}
-                  {:user (:id admin) :perm (:canEditColl imago)}
-                  {:user (:id anon) :perm (:canViewColl imago)})]
-    (concat
-     (load-vocab-triples "vocabs/imago.edn")
-     [admin anon]
-     repo
-     coll
-     presets)))
+(def version-presets
+  {:thumb-imago {:id "617e6192-d1a3-4422-b3cc-d7fcfb782de5"
+                 :width 160 :height 160 :crop true :mime :jpg}
+   :thumb-gray  {:id "581cfd98-32f4-4c5d-845c-29c45539cf7e"
+                 :width 200 :height 200 :crop true :filter :grayscale :mime :jpg}
+   :thumb-rgb   {:id "b23dd8c0-10d6-4b2d-99b0-5a39101691a3"
+                 :width 200 :height 200 :crop true :mime :jpg}
+   :small       {:id "296e1cfd-9fb7-4af7-9714-57f177e60ad5"
+                 :width 320 :height 240 :mime :jpg}
+   :hd360       {:id "3c253c5d-a0cb-42df-964d-8167ddae818f"
+                 :width 640 :height 360 :crop true :mime :jpg}
+   :hd720-crop  {:id "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"
+                 :width 1280 :height 720 :crop true :mime :jpg}
+   :hd720       {:id "adf8457f-64bf-4875-a713-faa8063eaba7"
+                 :height 720 :mime :jpg}
+   :hd1280      {:id "5d7f5d6b-c210-49c1-9e3e-59c4d15b18cd"
+                 :width 1280 :mime :jpg}})
 
 (def app
   {:graph
    {:impl-ns (or (env :imago-graph-impl) "imago.graph.memory")
-    :default-graph default-graph
+    :default-graph (model/default-graph
+                     {:presets version-presets
+                      :mime-types mime-types
+                      :salt salt})
     :salt    salt
     :memory  {:path (or (env :imago-graph-path) (str default-dir "/graph.db"))}}
 
