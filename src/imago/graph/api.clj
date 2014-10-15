@@ -5,6 +5,7 @@
   (get-collection [_ coll])
   (update-user [_ user])
   (get-user [_ id])
+  (get-anon-user [_])
   (add-triples [_ triples])
   (query [_ q]))
 

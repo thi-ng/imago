@@ -14,6 +14,7 @@
                  [org.clojure/data.json "0.2.5"]
                  [com.taoensso/timbre "3.3.1"]
                  [environ "1.0.0"]
+                 [slingshot "0.11.0"]
                  [camel-snake-kebab "0.1.5"]
                  [clj-time "0.6.0"]
                  [amazonica "0.2.27" :exclusions [joda-time]]

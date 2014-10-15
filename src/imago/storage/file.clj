@@ -1,6 +1,7 @@
 (ns imago.storage.file
   (:require
    [imago.storage.api :as api]
+   [ring.util.response :as resp]
    [clojure.java.io :as io]
    [taoensso.timbre :refer [info warn error]]))
 
@@ -31,4 +32,11 @@
                       o (io/output-stream dest)]
             (io/copy i o))))
       (get-object
-        [_ id] (io/input-stream (str base-path "/" id))))))
+        [_ id] (io/input-stream (str base-path "/" id)))
+      (get-object-response
+        [_ id]
+        (let [path (str base-path "/" id)]
+          (info :file-response path)
+          (if (.exists (io/file path))
+            (resp/file-response path :index-files? false)
+            (resp/not-found "")))))))

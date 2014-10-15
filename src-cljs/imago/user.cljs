@@ -13,17 +13,17 @@
 
 (defn show-template
   [state]
-  (let [user (:user @state)
-        uname (or (:name user) (:user-name user))]
+  (let [{:keys [name user-name] :as user} (:user @state)]
     (->> (:app-root config/app)
          (dom/clear!)
          (dom/create-dom!
           [:div.jumbotron
-           [:h1 (str "Welcome back, " uname)]
+           [:h1 (str "Welcome back, " (or name user-name))]
            [:p "Here're your collections..."]
-           [:p [:button.btn.btn-primary.btn-lg
-                {:events []}
-                [:span.glyphicon.glyphicon-plus] " New collection"]]]))))
+           (when (config/user-permitted? user :create-coll)
+             [:p [:button.btn.btn-primary.btn-lg
+                  {:events []}
+                  [:span.glyphicon.glyphicon-plus] " New collection"]])]))))
 
 (defn show-collections
   [state colls]
@@ -47,7 +47,7 @@
               (show-collections state (:body body)))
    :error   (fn [status body]
               (warn :error-response status body)
-              (async/publish bus :io-fail (:body body)))))
+              (async/publish (:bus @state) :io-fail (:body body)))))
 
 (defn init
   [bus]

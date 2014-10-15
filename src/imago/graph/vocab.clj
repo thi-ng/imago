@@ -5,13 +5,26 @@
    [clojure.java.io :as io]
    [clojure.string :as str]))
 
-(defn load-vocab
+(defn load-vocab-triples
   [path]
   (->> path
        (io/resource)
        (slurp)
        (edn/read-string)
-       (trio/as-model)
+       (trio/triple-seq)
+       (vec)))
+
+(defn load-model
+  [path]
+  (->> path
+       (io/resource)
+       (slurp)
+       (edn/read-string)
+       (trio/as-model)))
+
+(defn vocab-from-model
+  [graph]
+  (->> graph
        (trio/subjects)
        (map #(let [[_ v] (str/split % #":")] [(keyword v) %]))
        (into {})))
@@ -23,16 +36,61 @@
        (into {})))
 
 (defmacro defvocab
-  [id & xs] `(def ~id (make-vocab (name '~id) (list ~@xs))))
+  [id & xs]
+  `(def ~id
+     (let [xs# (list ~@xs)]
+       (if (string? (first xs#))
+         (-> xs# first load-model vocab-from-model)
+         (make-vocab (name '~id) xs#)))))
 
-(defvocab dct :abstract :accessRights :creator :contributor :dateSubmitted :description :format :hasVersion :isPartOf :license :references :title)
+(defvocab dcterms
+  :abstract
+  :accessRights
+  :contributor
+  :created
+  :creator
+  :dateSubmitted
+  :description
+  :format
+  :hasVersion
+  :isPartOf
+  :license
+  :modified
+  :publisher
+  :references
+  :rights
+  :title
+  )
 
-(defvocab rdf :type :Property :Resource)
+(defvocab dctypes
+  :Collection
+  :MovingImage
+  :RightsStatement
+  :StillImage)
 
-(defvocab foaf :Agent :name :nick :mbox :password)
+(defvocab rdf
+  :Property
+  :Resource
+  :object
+  :predicate
+  :subject
+  :type)
+
+(defvocab rdfs
+  :Class
+  :subClasOf)
+
+(defvocab foaf
+  :Agent
+  :firstName
+  :homepage
+  :lastName
+  :mbox
+  :name
+  :nick
+  :password
+  )
 
 (defvocab doap :Project)
 
-(defvocab owl :Thing :Class :SubClass)
-
-(def imago (load-vocab "vocabs/imago.edn"))
+(defvocab imago "vocabs/imago.edn")

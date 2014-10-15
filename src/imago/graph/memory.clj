@@ -1,5 +1,6 @@
 (ns imago.graph.memory
   (:require
+   [imago.config :as config]
    [imago.graph.api :as api]
    [thi.ng.trio.core :as trio]
    [thi.ng.trio.query :as q]
@@ -8,6 +9,12 @@
 
 (defrecord MemoryGraph [conf g]
   api/ImagoGraph
+  (get-anon-user
+    [_]
+    (->> (config/query-spec :get-anon-user)
+         (api/query _)
+         (q/keywordize-result-vars)
+         (first)))
   (update-user
     [_ user])
   (add-triples

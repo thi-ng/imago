@@ -4,6 +4,10 @@
 
 (declare logged-in?)
 
+(def perms
+  {:create-coll "imago:CreateCollRights"
+   :maintenance "imago:MaintenanceRights"})
+
 (def ^:export app
   {:nav-root   (dom/by-id "imago-nav")
    :app-root   (dom/by-id "imago-app")
@@ -52,3 +56,8 @@
 
 (defn logged-in?
   [state] (:user @state))
+
+(defn user-permitted?
+  [user & ps]
+  (if-let [uperms (:perms user)]
+    (every? #(uperms (perms %)) ps)))

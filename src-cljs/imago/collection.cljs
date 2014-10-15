@@ -95,7 +95,7 @@
          [:div.row
           [:div.col-xs-12
            [:h2 (:title @local)]]]
-         (when (= (:owner @local) (-> @state :user :id))
+         (when (get-in (:perms @local) [(-> @state :user :id) "imago:canEditColl"])
            (list
             [:div#dropzone-wrapper.jumbotron
              {:events [[:dragenter (fn [e] (dom/add-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
@@ -130,22 +130,34 @@
    :edn?    true
    :success (fn [status body]
               (let [graph (trio/as-model (:body body))
-                    title (-> graph (trio/select (:id @local) "dct:title" nil) (first) (peek))
-                    owner (-> graph (trio/select (:id @local) "dct:creator" nil) (first) (peek))
-                    items (q/query {:select :* :from graph
-                                    :query [{:where '[[?img "dct:hasVersion" ?thumb]
-                                                      [?img "dct:hasVersion" ?xl]
-                                                      [?img "dct:dateSubmitted" ?time]
-                                                      [?thumb "dct:references"
+                    title (-> graph (trio/select (:id @local) "dcterms:title" nil) (first) (peek))
+                    owner (-> graph (trio/select (:id @local) "dcterms:creator" nil) (first) (peek))
+                    perms (->> {:select '[?perms]
+                                :from graph
+                                :query [{:where '[[?r "rdf:type" "dctypes:RightsStatement"]
+                                                  [?r "rdf:subject" ?u]
+                                                  [?r "rdf:predicate" ?p]]}]
+                                :aggregate {'?perms {:use '?p :fn #(into #{} %)}}
+                                :group '?u}
+                               (q/query)
+                               (reduce-kv #(assoc %1 %2 (%3 '?perms)) {}))
+                    items (q/query {:select :*
+                                    :from graph
+                                    :query [{:where '[[?img "dcterms:hasVersion" ?thumb]
+                                                      [?img "dcterms:hasVersion" ?xl]
+                                                      [?img "dcterms:dateSubmitted" ?time]
+                                                      [?thumb "dcterms:references"
                                                        "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]
-                                                      [?xl "dct:references"
+                                                      [?xl "dcterms:references"
                                                        "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"]]}]
                                     :order-desc '?time})]
+                (debug :coll-perms perms)
                 (swap!
                  local assoc
                  :title title
                  :owner owner
                  :items items
+                 :perms perms
                  :graph graph)
                 (show-template state local)))
    :error   (fn [status body]

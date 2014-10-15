@@ -13,7 +13,7 @@
    [ring.util.response :as resp]
    [ring.util.codec :as codec]
    [ring.middleware.defaults :as rd]
-   [compojure.core :refer [defroutes context routes GET POST]]
+   [compojure.core :refer [defroutes context routes GET POST PUT DELETE]]
    [compojure.route :as route]
    [hiccup.page :refer [html5 include-js include-css]]
    [hiccup.element :as el]
@@ -132,15 +132,12 @@
           (fn [req {:keys [user pass]}]
             (let [user' (->> (config/query-spec :login user pass)
                              (gapi/query graph)
+                             (q/keywordize-result-vars)
                              (first))]
               (info :found-user user')
               (if user'
-                (let [user' {:id (user' '?u)
-                             :user-name user
-                             :name (user' '?n)
-                             :perms (user' '?perms)}]
-                  (-> (api-response req user' 200)
-                      (assoc :session {:user user'})))
+                (-> (api-response req user' 200)
+                    (assoc :session {:user user'}))
                 (api-response req "invalid login" 403))))))
    (POST "/logout" [:as req]
          (wrapped-api-handler
@@ -166,14 +163,16 @@
                        (gapi/query graph)
                        (first))]
           (info :item img)
-          (-> (sapi/get-object storage (str version (config/mime-ext (img '?mime))))
-              (resp/response)
-              (resp/header "Content-type" (img '?mime)))))
+          (if img
+            (-> (sapi/get-object-response storage (str version (config/mime-ext (img '?mime))))
+                (resp/header "Content-Type" (img '?mime)))
+            (resp/not-found ""))))
    (GET "/collections/:coll-id" [coll-id :as req]
         (wrapped-api-handler
          req {:coll-id coll-id} :get-collection
          (fn [req params]
-           (let [coll (->> (config/query-spec :describe-collection coll-id)
+           (let [user (-> req :session :user :id)
+                 coll (->> (config/query-spec :describe-collection user coll-id)
                            (gapi/query graph)
                            (gapi/pack-triples))]
              (if (seq coll)
@@ -185,13 +184,13 @@
           req (assoc (:params req) :user (get-in req [:session :user])) :upload
           (fn [req params]
             (let [user-id (-> params :user :id)
-                  tstamp  (utils/timestamp)
                   files (filter :tempfile (vals (:params req)))
                   presets (->> (config/query-spec :collection-presets coll-id)
                                (gapi/query graph)
                                (vals)
                                (map first))
                   tmp (File/createTempFile "imago" nil)
+                  now (utils/timestamp)
                   _ (info :files (map :filename files))
                   _ (info :presets presets)
                   _ (info :tmp-file tmp)
@@ -213,28 +212,32 @@
                                       (sapi/put-object storage dest (str version (config/mime-ext mime)) {})
                                       [(conj ids id)
                                        (into triples
-                                             [[id (:type rdf) (:StillImage imago)]
-                                              [id (:isPartOf dct) coll-id]
-                                              [id (:creator dct) user-id]
-                                              [id (:dateSubmitted dct) tstamp]
-                                              [id (:hasVersion dct) version]
-                                              [version (:references dct) preset]])]))
-                                  [#{} []]))]
+                                             [[id (:type rdf) (:StillImage dctypes)]
+                                              [id (:isPartOf dcterms) coll-id]
+                                              [id (:creator dcterms) user-id]
+                                              [id (:dateSubmitted dcterms) now]
+                                              [id (:hasVersion dcterms) version]
+                                              [version (:references dcterms) preset]])]))
+                                  [#{} [[coll-id (:modified dcterms) now]]]))]
               (gapi/add-triples graph triples)
               (api-response req (vec ids) 200)))))
-   (POST "/collections" [:as req]
+   (PUT "/collections" [:as req]
          (wrapped-api-handler
           req (assoc (:params req) :user (get-in req [:session :user])) :new-collection
           (fn [req {:keys [user title]}]
             (info :new-coll user title)
             (let [user-id (:id user)
                   coll-id (utils/new-uuid)
-                  title (or title "Untitled collection")
+                  title   (or title "Untitled collection")
+                  now     (utils/timestamp)
                   triples (trio/triple-seq
                            {coll-id
                             {(:type rdf) (:MediaCollection imago)
-                             (:title dct) title
-                             (:creator dct) user-id}})]
+                             (:title dcterms) title
+                             (:creator dcterms) user-id
+                             (:created dcterms) now
+                             (:modified dcterms) now
+                             (:accessRights dcterms) (:PublicRights imago)}})]
               (gapi/add-triples graph triples)
               (api-response req {:id coll-id :title title} 201)))))))
 
@@ -245,7 +248,10 @@
          (-> (:home page-cache)
              (update-in [1] conj (el/javascript-tag (str "var __IMAGO_USER__=" user ";")))
              (seq)
-             (html5))))
+             (html5)
+             (resp/response)
+             (resp/header "Content-Type" "text/html")
+             (update-in [:session :user] #(or % (gapi/get-anon-user graph))))))
   (context "/user" [] user-routes)
   (context "/media" [] media-routes)
   (route/not-found "404"))
