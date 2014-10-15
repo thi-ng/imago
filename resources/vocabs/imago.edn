@@ -23,43 +23,29 @@
   {"rdfs:subClassOf" "foaf:Agent"}}
  {"imago:AnonUser"
   {"rdfs:subClassOf" "imago:User"}}
- {"imago:hasRole" {"rdf:type" "rdf:Property"}}
 
  ;; roles & permissions
 
- {"imago:Role"
-  {"rdf:type" "rdfs:Class"}}
- {"imago:AdminRole"
-  {"rdfs:subClassOf" "imago:Role"
-   "dcterms:rights" ["imago:CreateCollRights"
-                     "imago:MaintenanceRights"]}}
- {"imago:UserRole"
-  {"rdfs:subClassOf" "imago:Role"
-   "dcterms:rights" "imago:CreateCollRights"}}
- {"imago:AnonRole"
-  {"rdfs:subClassOf" "imago:Role"}}
- [["imago:CreateCollRights" "imago:MaintenanceRights"]
-  "rdf:type" "dctypes:RightsStatement"]
  [["imago:canViewColl"
    "imago:canViewMeta"
-   "imago:canEditColl"
    "imago:canViewVersion"
-   "imago:canCreateColl"
-   "imago:canEditSystem"]
+   "imago:canEditColl"
+   "imago:canEditRepo"
+   "imago:canCreateColl"]
   "rdf:type" "rdf:Property"]
  ["imago:canEditColl" "rdfs:subPropertyOf" "imago:canViewColl"]
- ["imago:canEditSystem" "rdfs:subPropertyOf"
+ ["imago:canEditRepo" "rdfs:subPropertyOf"
   ["imago:canViewColl"
    "imago:canViewMeta"
-   "imago:canEditColl"
    "imago:canViewVersion"
+   "imago:canEditColl"
    "imago:canCreateColl"]]
  [["imago:canViewColl"
    "imago:canViewMeta"
-   "imago:canEditColl"
    "imago:canViewVersion"
-   "imago:canCreateColl"
-   "imago:canEditSystem"]
+   "imago:canEditColl"
+   "imago:canEditRepo"
+   "imago:canCreateColl"]
   "rdfs:domain" "foaf:Agent"]]
 
 

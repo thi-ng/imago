@@ -5,8 +5,8 @@
 (declare logged-in?)
 
 (def perms
-  {:create-coll "imago:CreateCollRights"
-   :maintenance "imago:MaintenanceRights"})
+  {:create-coll "imago:canCreateColl"
+   :maintenance "imago:canEditRepo"})
 
 (def ^:export app
   {:nav-root   (dom/by-id "imago-nav")

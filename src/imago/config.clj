@@ -52,14 +52,15 @@
                                     :mime (mime-types mime)
                                     :filter (name (or filter :none))
                                     :crop (boolean crop)})))))
-        repo     (model/make-repo {})
         admin    (model/make-user
                   {:type (:User imago)
                    :user-name "admin"
                    :name "Imago Admin"
-                   :password (utils/sha-256 "admin" "imago" salt)
-                   :role (:AdminRole imago)})
+                   :password (utils/sha-256 "admin" "imago" salt)})
         anon     (model/make-user {})
+        repo     (model/make-repo-with-rights
+                  {} {:user (:id admin) :perm (:canEditRepo imago)}
+                  {:user (:id admin) :perm (:canCreateColl imago)})
         coll     (model/make-collection-with-rights
                   {:creator (:id admin)
                    :parent (:id repo)
@@ -68,7 +69,8 @@
                   {:user (:id anon) :perm (:canViewColl imago)})]
     (concat
      (load-vocab-triples "vocabs/imago.edn")
-     [repo admin anon]
+     [admin anon]
+     repo
      coll
      presets)))
 
@@ -97,7 +99,7 @@
            :get-collection
            {:coll-id [(v/required) (v/uuid4)]}
            :new-collection
-           {:user {:perms [(v/required-keys ["imago:CreateCollRights"] "insufficient permission")]}
+           {:user {:perms [(v/required-keys ["imago:canCreateColl"] "insufficient permission")]}
             :title [(v/optional (v/max-length 64))]}}}
 
    :queries
@@ -107,21 +109,25 @@
        :query [{:where [['?u (:type rdf) (:User imago)]
                         ['?u (:nick foaf) user]
                         ['?u (:password foaf) (utils/sha-256 user pass salt)]
-                        ['?u (:hasRole imago) '?r]
-                        ['?r (:rights dcterms) '?perm]]}
+                        ['?repo (:type rdf) (:Repository imago)]
+                        ['?repo (:accessRights dcterms) '?rs]
+                        ['?rs (:subject rdf) '?u]
+                        ['?rs (:predicate rdf) '?p]]}
                {:optional [['?u (:name foaf) '?name]]}]
        :bind {'?user-name (constantly user)}
-       :aggregate {'?perms {:use '?perm :fn #(into #{} %)}}})
+       :aggregate {'?perms {:use '?p :fn #(into #{} %)}}})
 
     :get-anon-user
     (fn []
       {:select '[{?id ?u} ?user-name ?n ?perms]
        :query [{:where [['?u (:type rdf) (:AnonUser imago)]
                         ['?u (:nick foaf) '?user-name]
-                        ['?u (:hasRole imago) '?r]
-                        ['?r (:rights dcterms) '?perm]]}
-               {:optional [['?u (:name foaf) '?n]]}]
-       :aggregate {'?perms {:use '?perm :fn #(into #{} %)}}})
+                        ['?repo (:type rdf) (:Repository imago)]
+                        ['?repo (:accessRights dcterms) '?rs]
+                        ['?rs (:subject rdf) '?u]
+                        ['?rs (:predicate rdf) '?p]]}
+               {:optional [['?u (:name foaf) '?name]]}]
+       :aggregate {'?perms {:use '?p :fn #(into #{} %)}}})
 
     :get-user-collections
     (fn [user]

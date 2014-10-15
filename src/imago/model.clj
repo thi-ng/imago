@@ -13,7 +13,6 @@
     [id type
      user-name name
      mbox password homepage
-     role
      created]
   trio/PTripleSeq
   (triple-seq
@@ -26,7 +25,6 @@
        (:mbox foaf) mbox
        (:password foaf) password
        (:created dcterms) created
-       (:hasRole imago) role
        (:homepage foaf) homepage}})))
 
 (defrecord MediaRepository
@@ -114,19 +112,17 @@
        (:accessRights dcterms) rights}})))
 
 (defn make-user
-  [{:keys [id type role created]
+  [{:keys [id type created]
     :or {id      (utils/new-uuid)
          type    (:AnonUser imago)
-         role    (:AnonRole imago)
          created (utils/timestamp)}
     :as opts}]
   (let [[opts err]
         (-> opts
-            (merge {:id id :type type :role role :created created})
+            (merge {:id id :type type :created created})
             (v/validate
              {:id       [(v/uuid4)]
               :type     [(v/member-of #{(:User imago) (:AnonUser imago)})]
-              :role     [(v/member-of #{(:AdminRole imago) (:UserRole imago) (:AnonRole imago)})]
               :created  [(v/number) (v/pos)]
               :mbox     [(v/optional (v/mailto))]
               :password [(v/optional (v/fixed-length 64))] ;; sha-256 = 32 bytes
