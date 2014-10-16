@@ -124,6 +124,53 @@
         (api-response req err 400)))
     (invalid-api-response)))
 
+(defn collection-presets
+  [coll-id]
+  (->> (config/query-spec :collection-presets coll-id)
+       (gapi/query graph)
+       (vals)
+       (map first)
+       (map #(let [{:syms [?preset ?w ?h ?crop ?filter ?mime ?restrict]} %]
+               [?preset ?w ?h ?crop ?filter ?mime ?restrict]))))
+
+(defn image-version-producer
+  "Takes a source image file to process and returns a fn accepting an
+  Image instance and version preset spec. Produces resized version and
+  adds it to storage. Returns updated Image instance w/ new version
+  added."
+  [src]
+  (fn [img [pid w h crop flt mime restrict]]
+    (let [version (model/make-media-version {:id (str (:id img) "-" pid) :preset pid})
+          tmp     (File/createTempFile "imago" nil)]
+      (image/resize-image
+       {:src src
+        :dest tmp
+        :type (subs (config/mime-ext mime) 1)
+        :width w
+        :height h
+        :crop crop
+        :filter flt})
+      (sapi/put-object
+       storage tmp
+       (str (:id version) (config/mime-ext mime)) {})
+      (.delete tmp)
+      (update-in img [:versions] conj version))))
+
+(defn handle-uploaded-images
+  "Take a map of Image keys w/ file path vals and a seq of preset
+  specs as returned by `collection-presets`. Produces resized versions
+  for each, adds them to storage. Returns vector of Image
+  instances (each populated w/ the various versions produced."
+  [images presets]
+  (->> images
+       (reduce-kv
+        (fn [acc img file]
+          (->> presets
+               ;; TODO restrict check/filter
+               (reduce (image-version-producer file) img)
+               (conj acc)))
+        [])))
+
 (def user-routes
   (routes
    (POST "/login" [:as req]
@@ -186,46 +233,15 @@
           (fn [req params]
             (let [user-id (-> params :user :id)
                   files (filter :tempfile (vals (:params req)))
-                  presets (->> (config/query-spec :collection-presets coll-id)
-                               (gapi/query graph)
-                               (vals)
-                               (map first)
-                               (map #(let [{:syms [?preset ?w ?h ?crop ?filter ?mime ?restrict]} %]
-                                       [?preset ?w ?h ?crop ?filter ?mime ?restrict])))
-                  images  (zipmap
+                  presets (collection-presets coll-id)
+                  img-map (zipmap
                            (repeatedly #(model/make-image {:coll-id coll-id :publisher user-id}))
                            (map :tempfile files))
-                  tmp     (File/createTempFile "imago" nil)
-                  now     (utils/timestamp)
-                  _ (info :files (map :filename files))
-                  _ (info :presets presets)
-                  images  (->> images
-                               (reduce-kv
-                                (fn [acc img file]
-                                  (->> presets
-                                       ;; TODO restrict check
-                                       (reduce
-                                        (fn [img [pid w h crop flt mime restrict]]
-                                          (let [version (model/make-media-version
-                                                         {:id (str (:id img) "-" pid)
-                                                          :preset pid})]
-                                            (image/resize-image
-                                             {:src file
-                                              :dest tmp
-                                              :type (subs (config/mime-ext mime) 1)
-                                              :width w
-                                              :height h
-                                              :crop crop
-                                              :filter flt})
-                                            (sapi/put-object
-                                             storage tmp
-                                             (str (:id version) (config/mime-ext mime)) {})
-                                            (update-in img [:versions] conj version)))
-                                        img)
-                                       (conj acc)))
-                                []))]
+                  _       (info :img-map img-map)
+                  _       (info :presets presets)
+                  images  (handle-uploaded-images img-map presets)]
               (->> images
-                   (concat [[coll-id (:modifie dcterms) now]])
+                   (concat [[coll-id (:modified dcterms) (utils/timestamp)]])
                    (trio/triple-seq)
                    (gapi/add-triples graph))
               (api-response req (mapv :id images) 200)))))
@@ -234,20 +250,10 @@
          req (assoc (:params req) :user (get-in req [:session :user])) :new-collection
          (fn [req {:keys [user title]}]
            (info :new-coll user title)
-           (let [user-id (:id user)
-                 coll-id (utils/new-uuid)
-                 title   (or title "Untitled collection")
-                 now     (utils/timestamp)
-                 triples (trio/triple-seq
-                          {coll-id
-                           {(:type rdf) (:MediaCollection imago)
-                            (:title dcterms) title
-                            (:creator dcterms) user-id
-                            (:created dcterms) now
-                            (:modified dcterms) now
-                            (:accessRights dcterms) (:PublicRights imago)}})]
-             (gapi/add-triples graph triples)
-             (api-response req {:id coll-id :title title} 201)))))))
+           (let [coll (model/make-collection-with-rights
+                       {} {:user (:id user) :perm (:canEditColl imago)})]
+             (gapi/add-triples graph (trio/triple-seq coll))
+             (api-response req coll 201)))))))
 
 (defroutes all-routes
   (GET "/" [:as req]
