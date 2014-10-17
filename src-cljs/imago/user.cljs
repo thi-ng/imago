@@ -20,24 +20,29 @@
    :data    {}
    :success (fn [status body]
               (info :success-response status body)
-              (async/publish (:bus state) :newcoll-success (:body body)))
+              (async/publish (:bus @state) :refresh-route nil)
+              (async/publish (:bus @state) :newcoll-success (:body body)))
    :error   (fn [status body]
               (warn :error-response status body)
-              (async/publish (:bus state) :newcoll-fail (:body body)))))
+              (async/publish (:bus @state) :newcoll-fail (:body body)))))
 
 (defn show-template
-  [state]
+  [state local]
   (let [{:keys [name user-name] :as user} (:user @state)]
     (->> (:app-root config/app)
          (dom/clear!)
          (dom/create-dom!
           [:div.jumbotron
-           [:h1 (str "Welcome back, " (or name user-name))]
-           [:p "Here're your collections..."]
-           (when (config/user-permitted? user :create-coll)
-             [:p [:button.btn.btn-primary.btn-lg
-                  {:events [[:click (fn [e] (handle-new-collection state))]]}
-                  [:span.glyphicon.glyphicon-plus] " New collection"]])]))))
+           (if (= user-name (:user @local))
+             (list
+              [:h1 (str "Welcome back, " (or name user-name))]
+              [:p "Here're your collections..."]
+              (when (config/user-permitted? user :create-coll)
+                [:p [:button.btn.btn-primary.btn-lg
+                     {:events [[:click (fn [e] (handle-new-collection state))]]}
+                     [:span.glyphicon.glyphicon-plus] " New collection"]]))
+             (list
+              [:h1 (str "/users/" (:user @local))]))]))))
 
 (defn show-collections
   [state colls]
@@ -53,9 +58,9 @@
               [:div.col-xs-8.col-md-10 [:a {:href coll} [:h2 ?title]]]])]))))
 
 (defn load-collections
-  [state]
+  [state local]
   (io/request
-   :uri     (config/api-route :user-collections (-> @state :user :user-name))
+   :uri     (config/api-route :user-collections (-> @local :user))
    :method  :get
    :edn?    true
    :success (fn [status body]
@@ -67,10 +72,12 @@
 
 (defn init
   [bus]
-  (let [init (async/subscribe bus :init-user)]
+  (let [init (async/subscribe bus :init-user)
+        local (atom {})]
     (debug :init-user)
     (go-loop []
-      (let [[_ [state]] (<! init)]
-        (show-template state)
-        (load-collections state)
+      (let [[_ [state params]] (<! init)]
+        (swap! local assoc :user (:user params))
+        (show-template state local)
+        (load-collections state local)
         (recur)))))

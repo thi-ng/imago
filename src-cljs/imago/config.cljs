@@ -9,6 +9,10 @@
    :create-user "imago:canCreateUser"
    :maintenance "imago:canEditRepo"})
 
+(def presets
+  {:imago-thumb "617e6192-d1a3-4422-b3cc-d7fcfb782de5"
+   :imago-xl    "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"})
+
 (def ^:export app
   {:nav-root   (dom/by-id "imago-nav")
    :app-root   (dom/by-id "imago-app")

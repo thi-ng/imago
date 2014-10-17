@@ -93,15 +93,22 @@
                    (get-in config/app [:routes (:default-route-id config/app) :route])))))))
 
 (defn listen-route-change
-  [bus]
-  (let [ch (async/subscribe bus :route-changed)]
+  [state]
+  (let [ch (async/subscribe (:bus @state) :route-changed)]
     (go-loop []
-      (let [[_ [state new-route]] (<! ch)
-            curr-id (-> @state :route :controller)
-            new-id (:controller new-route)]
+      (let [[_ new-route] (<! ch)]
         (debug :new-route new-route)
         (transition-controllers state new-route)
         (recur)))))
+
+(defn listen-route-refresh
+  [state]
+  (let [ch (async/subscribe (:bus @state) :refresh-route)]
+    (go-loop []
+      (<! ch)
+      (debug :refresh-route (:route @state))
+      (transition-controllers state (:route @state))
+      (recur))))
 
 (defn listen-dom
   [bus]
@@ -113,11 +120,12 @@
         [(.-innerWidth js/window) (.-innerHeight js/window)]))]]))
 
 (defn init-router
-  [bus state routes default-route-id]
+  [state routes default-route-id]
   (let [router (route/router
                 routes (routes default-route-id)
-                #(async/publish bus :route-changed [state %]))]
-    (listen-route-change bus)
+                #(async/publish (:bus @state) :route-changed %))]
+    (listen-route-change state)
+    (listen-route-refresh state)
     (route/start-router! router)))
 
 (defn make-app-state
@@ -150,9 +158,7 @@
    (fn [user]
      (let [bus   (async/pub-sub (fn [e] (debug :bus (first e)) (first e)))
            state (make-app-state bus user)]
-       (init-router
-        bus state
-        (:routes config/app) (:default-route-id config/app))
+       (init-router state (:routes config/app) (:default-route-id config/app))
        (login/login-watcher bus state)))))
 
 (.addEventListener js/window "load" start)

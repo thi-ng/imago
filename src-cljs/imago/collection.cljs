@@ -30,6 +30,7 @@
        :data    fd
        :success (fn [status body]
                   (info :success-response status body)
+                  (async/publish bus :refresh-route nil)
                   (async/publish bus :upload-success (:body body)))
        :error   (fn [status body]
                   (warn :error-response status body)
@@ -98,8 +99,9 @@
          (when (get-in (:perms @local) [(-> @state :user :id) "imago:canEditColl"])
            (list
             [:div#dropzone-wrapper.jumbotron
-             {:events [[:dragenter (fn [e] (dom/add-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
-                       [:dragleave (fn [e] (dom/remove-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
+             {:events [[:dragenter (fn [e] (.stopPropagation e) (dom/add-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
+                       [:dragover (fn [e] (.preventDefault e) (.stopPropagation e) (dom/add-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
+                       [:dragleave (fn [e] (.stopPropagation e) (dom/remove-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
                        [:drop (add-files state local)]]}
              [:div#dropzone.container
               [:h2#drop-msg.text-center "Drop media files here"]]]
@@ -118,8 +120,10 @@
          [:div.row
           (for [{:syms [?thumb ?xl]} (:items @local)]
             [:div.col-xs-4.col-md-2
-             [:a.thumbnail {:href (config/api-route :image ?xl)}
-              [:img {:src (config/api-route :image ?thumb)}]]])]
+             (if ?xl
+               [:a.thumbnail {:href (config/api-route :image ?xl)}
+                [:img {:src (config/api-route :image ?thumb)}]]
+               [:img {:src (config/api-route :image ?thumb)}])])]
          ])))
 
 (defn load-collection
@@ -143,13 +147,11 @@
                                (reduce-kv #(assoc %1 %2 (%3 '?perms)) {}))
                     items (q/query {:select :*
                                     :from graph
-                                    :query [{:where '[[?img "dcterms:hasVersion" ?thumb]
-                                                      [?img "dcterms:hasVersion" ?xl]
-                                                      [?img "dcterms:dateSubmitted" ?time]
-                                                      [?thumb "dcterms:references"
-                                                       "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]
-                                                      [?xl "dcterms:references"
-                                                       "fd9e54e5-3700-4736-ba32-a1bae45cf0b3"]]}]
+                                    :query [{:where [['?img "dcterms:hasVersion" '?thumb]
+                                                     ['?img "dcterms:dateSubmitted" '?time]
+                                                     ['?thumb "dcterms:references" (:imago-thumb config/presets)]]}
+                                            {:optional [['?img "dcterms:hasVersion" '?xl]
+                                                        ['?xl "dcterms:references" (:imago-xl config/presets)]]}]
                                     :order-desc '?time})]
                 (debug :coll-perms perms)
                 (swap!
