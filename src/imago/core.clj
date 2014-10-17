@@ -39,6 +39,9 @@
       (str "var __IMAGO_CONFIG__="
            (or (-> config/app :ui (config/mode) :override-config) "null") ";"))]]})
 
+(defn current-user
+  [req] (-> req :session :user))
+
 (defn request-signature
   [uri params key]
   (->> key
@@ -89,28 +92,33 @@
                      :else [(pr-str body) text])]
     (-> (resp/response body)
         (resp/status status)
-        (resp/content-type type))))
+        (resp/content-type type)
+        (assoc :session (:session req)))))
 
 (defn invalid-api-response
-  []
+  [req]
   (-> (apply str
              "Only the following content types are supported: "
              (interpose ", " config/api-mime-types))
       (resp/response)
       (resp/status 406)
-      (resp/content-type (:text config/mime-types))))
+      (resp/content-type (:text config/mime-types))
+      (assoc :session (:session req))))
 
 (defn invalid-signature-response
-  []
+  [req]
   (-> (resp/response "Request signature check failed")
       (resp/status 403)
-      (resp/content-type (:text config/mime-types))))
+      (resp/content-type (:text config/mime-types))
+      (assoc :session (:session req))))
 
 (defn missing-entity-response
   [req id] (api-response req {:reason (str "Unknown ID: " id)} 404))
 
 (defn wrapped-api-handler
   [req params validate-id handler]
+  (info "-------------------")
+  (info :cookies (:cookies req) :session (:session req))
   (if (valid-api-accept? req)
     (let [[params err] (if validate-id
                          (validate-api-params params validate-id)
@@ -122,7 +130,7 @@
             (.printStackTrace e)
             (api-response req "Error handling route" 500)))
         (api-response req err 400)))
-    (invalid-api-response)))
+    (invalid-api-response req)))
 
 (defn collection-presets
   [coll-id]
@@ -173,6 +181,28 @@
 
 (def user-routes
   (routes
+   (PUT "/" [:as req]
+        (wrapped-api-handler
+         req (:params req) :register
+         (fn [req {:keys [fullname email username pass1 pass2]}]
+           (let [user            (model/make-user
+                                  {:type (:User imago)
+                                   :name fullname
+                                   :user-name username
+                                   :email email
+                                   :password (utils/sha-256 username pass1 config/salt)})
+                 {:syms [?repo]} (->> (config/query-spec :get-repo)
+                                      (gapi/query graph)
+                                      (first))
+                 base-rights     {:user (:id user) :context ?repo}
+                 perms           #{(:canCreateColl imago) (:canViewRepo imago)}
+                 rights          (map #(model/make-rights-statement (assoc base-rights :perm %)) perms)
+                 repo-rights     (map #(trio/triple ?repo (:accessRights dcterms) (:id %)) rights)
+                 user'           (-> user (select-keys [:id :user-name :name]) (assoc :perms perms))
+                 triples         (trio/triple-seq (concat [user] rights repo-rights))]
+             (info :triples triples)
+             (gapi/add-triples graph triples)
+             (api-response req user' 201)))))
    (POST "/login" [:as req]
          (info "login attempt:" (:params req))
          (wrapped-api-handler
@@ -191,8 +221,16 @@
          (wrapped-api-handler
           req nil nil
           (fn [req _]
-            (-> (api-response req "user logged out" 200)
-                (assoc :session {})))))
+            (-> (api-response req (gapi/get-anon-user graph) 200)
+                (assoc :session nil)))))
+   (GET "/session" [:as req]
+        (wrapped-api-handler
+         req nil nil
+         (fn [req _]
+           (if-let [user (current-user req)]
+             (do (info :user-session user)
+                 (api-response req user 200))
+             (api-response req "" 204)))))
    (GET "/:user/collections" [user :as req]
         (wrapped-api-handler
          req {:user user} :get-user-collections ;; TODO
@@ -206,20 +244,21 @@
 
 (def media-routes
   (routes
-   (GET "/image/:version" [version :as req]
+   (GET "/images/:version" [version :as req]
         (let [img (->> (config/query-spec :media-item-version version)
                        (gapi/query graph)
                        (first))]
           (info :item img)
           (if img
             (-> (sapi/get-object-response storage (str version (config/mime-ext (img '?mime))))
-                (resp/header "Content-Type" (img '?mime)))
+                (resp/header "Content-Type" (img '?mime))
+                (assoc :session (:session req)))
             (resp/not-found ""))))
    (GET "/collections/:coll-id" [coll-id :as req]
         (wrapped-api-handler
          req {:coll-id coll-id} :get-collection
          (fn [req params]
-           (let [user (-> req :session :user :id)
+           (let [user (-> req current-user :id)
                  coll (->> (config/query-spec :describe-collection user coll-id)
                            (gapi/query graph)
                            (gapi/pack-triples))]
@@ -229,10 +268,10 @@
    (POST "/collections/:coll-id" [coll-id :as req]
          (info req)
          (wrapped-api-handler
-          req (assoc (:params req) :user (get-in req [:session :user])) :upload
+          req (assoc (:params req) :user (current-user req)) :upload
           (fn [req params]
-            (let [user-id (-> params :user :id)
-                  files (filter :tempfile (vals (:params req)))
+            (let [user-id (-> req current-user :id)
+                  files   (filter :tempfile (vals (:params req)))
                   presets (collection-presets coll-id)
                   img-map (zipmap
                            (repeatedly #(model/make-image {:coll-id coll-id :publisher user-id}))
@@ -247,26 +286,27 @@
               (api-response req (mapv :id images) 200)))))
    (PUT "/collections" [:as req]
         (wrapped-api-handler
-         req (assoc (:params req) :user (get-in req [:session :user])) :new-collection
+         req (assoc (:params req) :user (current-user req)) :new-collection
          (fn [req {:keys [user title]}]
            (info :new-coll user title)
            (let [coll (model/make-collection-with-rights
-                       {} {:user (:id user) :perm (:canEditColl imago)})]
+                       {:creator (:id user)
+                        :parent (ffirst (trio/select @(:g graph) nil (:type rdf) (:Repository imago)))}
+                       {:user (:id user) :perm (:canEditColl imago)})]
+             (info :new-coll coll)
              (gapi/add-triples graph (trio/triple-seq coll))
              (api-response req coll 201)))))))
 
 (defroutes all-routes
   (GET "/" [:as req]
-       (let [user (if-let [user (get-in req [:session :user])]
-                    (str \' user \') "null")]
-         (-> (:home page-cache)
-             (update-in [1] conj (el/javascript-tag (str "var __IMAGO_USER__=" user ";")))
-             (seq)
-             (html5)
-             (resp/response)
-             (resp/header "Content-Type" "text/html")
-             (update-in [:session :user] #(or % (gapi/get-anon-user graph))))))
-  (context "/user" [] user-routes)
+       (-> (:home page-cache)
+           (seq)
+           (html5)
+           (resp/response)
+           (resp/header "Content-Type" "text/html")
+           (assoc-in [:session :user]
+                     (or (current-user req) (gapi/get-anon-user graph)))))
+  (context "/users" [] user-routes)
   (context "/media" [] media-routes)
   (route/not-found "404"))
 

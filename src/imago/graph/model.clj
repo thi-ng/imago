@@ -221,11 +221,15 @@
                    :user-name "admin"
                    :name "Imago Admin"
                    :password (utils/sha-256 "admin" "imago" salt)})
-        anon     (make-user {})
+        anon     (make-user
+                  {:type (:AnonUser imago)
+                   :user-name "anon"})
         repo     (make-repo-with-rights
                   {}
                   {:user (:id admin) :perm (:canEditRepo imago)}
-                  {:user (:id admin) :perm (:canCreateColl imago)})
+                  {:user (:id admin) :perm (:canCreateColl imago)}
+                  {:user (:id anon) :perm (:canViewRepo imago)}
+                  {:user (:id anon) :perm (:canCreateUser imago)})
         coll     (make-collection-with-rights
                   {:creator (:id admin)
                    :parent (:id repo)

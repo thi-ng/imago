@@ -29,23 +29,31 @@
  [["imago:canViewColl"
    "imago:canViewMeta"
    "imago:canViewVersion"
+   "imago:canViewRepo"
    "imago:canEditColl"
    "imago:canEditRepo"
-   "imago:canCreateColl"]
+   "imago:canEditUser"
+   "imago:canCreateColl"
+   "imago:canCreateUser"]
   "rdf:type" "rdf:Property"]
  ["imago:canEditColl" "rdfs:subPropertyOf" "imago:canViewColl"]
  ["imago:canEditRepo" "rdfs:subPropertyOf"
   ["imago:canViewColl"
    "imago:canViewMeta"
    "imago:canViewVersion"
+   "imago:canViewRepo"
    "imago:canEditColl"
+   "imago:canEditUser"
    "imago:canCreateColl"]]
  [["imago:canViewColl"
    "imago:canViewMeta"
    "imago:canViewVersion"
+   "imago:canViewRepo"
    "imago:canEditColl"
    "imago:canEditRepo"
-   "imago:canCreateColl"]
+   "imago:canEditUser"
+   "imago:canCreateColl"
+   "imago:canCreateUser"]
   "rdfs:domain" "foaf:Agent"]]
 
 

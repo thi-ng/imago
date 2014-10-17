@@ -92,9 +92,14 @@
        :bind {'?user-name (constantly user)}
        :aggregate {'?perms {:use '?p :fn #(into #{} %)}}})
 
+    :get-repo
+    (fn []
+      {:select '?repo
+       :query [{:where [['?repo (:type rdf) (:Repository imago)]]}]})
+    
     :get-anon-user
     (fn []
-      {:select '[{?id ?u} ?user-name ?n ?perms]
+      {:select ['{?id ?u} '?user-name '?n '?perms {'?anon (constantly true)}]
        :query [{:where [['?u (:type rdf) (:AnonUser imago)]
                         ['?u (:nick foaf) '?user-name]
                         ['?repo (:type rdf) (:Repository imago)]
