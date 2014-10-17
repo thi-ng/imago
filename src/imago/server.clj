@@ -6,6 +6,9 @@
    [compojure.handler :refer [site]]
    [imago.core]))
 
+(taoensso.timbre/set-config!
+ [:ns-blacklist] '[thi.ng.trio.query])
+
 (defonce server (atom nil))
 
 (defn stop-server []
@@ -15,5 +18,8 @@
     (info "server stopped")))
 
 (defn -main [& args]
-  (reset! server (httpkit/run-server (reload/wrap-reload #'imago.core/app) {:port 8080}))
+  (reset! server
+          (httpkit/run-server
+           (reload/wrap-reload #'imago.core/app)
+           {:port 8080}))
   (info "started server @" 8080))
