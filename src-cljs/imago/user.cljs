@@ -45,10 +45,12 @@
     (->> (:app-root config/app)
          (dom/create-dom!
           [:div
-           (for [{:keys [id title thumb]} colls]
+           (for [{:syms [?id ?title ?thumb]} colls
+                 :let [thumb (config/api-route :image ?thumb)
+                       coll  (str "#/collections/" ?id)]]
              [:div.row
-              [:div.col-xs-2 [:img {:src thumb}]]
-              [:div.col-xs-6 [:a {:href (str "#/collections/" id)} [:h2 title]]]])]))))
+              [:div.col-xs-4.col-md-2 (if ?thumb [:a {:href coll} [:img {:src thumb}]])]
+              [:div.col-xs-8.col-md-10 [:a {:href coll} [:h2 ?title]]]])]))))
 
 (defn load-collections
   [state]

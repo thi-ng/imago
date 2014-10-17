@@ -237,7 +237,7 @@
          (fn [req _]
            (let [colls (->> (config/query-spec :get-user-collections user)
                             (gapi/query graph)
-                            (q/keywordize-result-vars))]
+                            (map (fn [[k v]] (first v))))]
              (info :user-colls colls)
              (api-response req colls 200)))))
    ))

@@ -96,7 +96,7 @@
     (fn []
       {:select '?repo
        :query [{:where [['?repo (:type rdf) (:Repository imago)]]}]})
-    
+
     :get-anon-user
     (fn []
       {:select ['{?id ?u} '?user-name '?n '?perms {'?anon (constantly true)}]
@@ -111,12 +111,18 @@
 
     :get-user-collections
     (fn [user]
-      {:select '[?id ?title]
+      {:select '[?id ?title ?thumb ?date]
        :query [{:where [['?u (:type rdf) (:User imago)]
                         ['?u (:nick foaf) user]
                         ['?id (:creator dcterms) '?u]
                         ['?id (:type rdf) (:MediaCollection imago)]
-                        ['?id (:title dcterms) '?title]]}]})
+                        ['?id (:title dcterms) '?title]]}
+               {:optional [['?img (:isPartOf dcterms) '?id]
+                           ['?img (:hasVersion dcterms) '?thumb]
+                           ['?img (:dateSubmitted dcterms) '?date]
+                           ['?thumb (:references dcterms) "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]]}]
+       :group '?id
+       :order-desc '?date})
     :get-collection
     (fn [coll-id]
       {:select :*
