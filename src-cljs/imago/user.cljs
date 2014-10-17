@@ -11,6 +11,20 @@
    [thi.ng.cljs.io :as io]
    [cljs.core.async :refer [<! timeout]]))
 
+(defn handle-new-collection
+  [state]
+  (io/request
+   :uri     (config/api-route :new-collection) ;; TODO coll spec incl. :method
+   :method  :put
+   :edn?    true
+   :data    {}
+   :success (fn [status body]
+              (info :success-response status body)
+              (async/publish (:bus state) :newcoll-success (:body body)))
+   :error   (fn [status body]
+              (warn :error-response status body)
+              (async/publish (:bus state) :newcoll-fail (:body body)))))
+
 (defn show-template
   [state]
   (let [{:keys [name user-name] :as user} (:user @state)]
@@ -22,7 +36,7 @@
            [:p "Here're your collections..."]
            (when (config/user-permitted? user :create-coll)
              [:p [:button.btn.btn-primary.btn-lg
-                  {:events []}
+                  {:events [[:click (fn [e] (handle-new-collection state))]]}
                   [:span.glyphicon.glyphicon-plus] " New collection"]])]))))
 
 (defn show-collections

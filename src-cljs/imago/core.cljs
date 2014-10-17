@@ -36,8 +36,8 @@
 
 (defn show-nav
   [state sel-id]
-  (let [user (-> @state :user :user-name)
-        nav-routes (if user
+  (let [user (-> @state :user)
+        nav-routes (if-not (:anon user)
                      (-> config/app :nav-items :user)
                      (-> config/app :nav-items :anon))]
     (->> (:nav-root config/app)
@@ -49,11 +49,11 @@
              [:a.navbar-brand {:href "#/home"} "imago"]]
             [:div.navbar-collapse.collapse
              [:ul.nav.navbar-nav
-              (build-nav nav-routes sel-id user)]
+              (build-nav nav-routes sel-id (:user-name user))]
              [:ul.nav.navbar-nav.navbar-right
-              (if (:user @state)
+              (if-not (:anon user)
                 (list
-                 [:li [:a "Logged in as " (-> @state :user :user-name)]]
+                 [:li [:a "Logged in as " (:user-name user)]]
                  [:li [:a {:href "#"
                            :events [[:click
                                      (fn [e]
@@ -132,15 +132,27 @@
                    {} modules)
          :route {:controller :loader}}))
 
+(defn get-session-user
+  [init]
+  (io/request
+   :uri     (config/api-route :current-user)
+   :method  :get
+   :edn?    true
+   :success (fn [status body]
+              (info :success-response status body)
+              (init (:body body)))
+   :error   (fn [status body]
+              (warn :error-response status body))))
 (defn start
   []
   (config/set-config! "__IMAGO_CONFIG__")
-  (let [bus   (async/pub-sub (fn [e] (debug :bus (first e)) (first e)))
-        user  (when-let [user js/__IMAGO_USER__] (read-string user))
-        state (make-app-state bus user)]
-    (init-router
-     bus state
-     (:routes config/app) (:default-route-id config/app))
-    (login/login-watcher bus state)))
+  (get-session-user
+   (fn [user]
+     (let [bus   (async/pub-sub (fn [e] (debug :bus (first e)) (first e)))
+           state (make-app-state bus user)]
+       (init-router
+        bus state
+        (:routes config/app) (:default-route-id config/app))
+       (login/login-watcher bus state)))))
 
 (.addEventListener js/window "load" start)

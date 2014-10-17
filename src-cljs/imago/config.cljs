@@ -6,6 +6,7 @@
 
 (def perms
   {:create-coll "imago:canCreateColl"
+   :create-user "imago:canCreateUser"
    :maintenance "imago:canEditRepo"})
 
 (def ^:export app
@@ -27,11 +28,14 @@
    :default-route-id 0
 
    :api-routes
-   {:get-object (fn [id] (str "objects/" id))
-    :user-collections (fn [user] (str "/user/" user "/collections"))
-    :collection (fn [id] (str "/media/collections/" id))
-    :login      (constantly "/user/login")
-    :logout     (constantly "/user/logout")
+   {:image            (fn [id] (str "/media/images/" id))
+    :user-collections (fn [user] (str "/users/" user "/collections"))
+    :new-collection   (constantly "/media/collections")
+    :collection       (fn [id] (str "/media/collections/" id))
+    :register         (constantly "/users")
+    :login            (constantly "/users/login")
+    :logout           (constantly "/users/logout")
+    :current-user     (constantly "/users/session")
     }
 
    :api-inject {}

@@ -3,6 +3,7 @@
    [cljs.core.async.macros :refer [go go-loop]])
   (:require
    [imago.config :as config]
+   [imago.login :as login]
    [thi.ng.cljs.async :as async]
    [thi.ng.cljs.log :refer [debug info warn]]
    [thi.ng.cljs.route :as route]
@@ -18,9 +19,11 @@
         [:div.jumbotron
          [:h1 "Welcome to imago"]
          [:p "Graph all your media!"]
-         [:p [:a.btn.btn-primary.btn-lg
-              {:href "#/register"}
-              "Register"]]])))
+         (when (config/user-permitted? (:user @state) :create-user)
+           [:p [:a.btn.btn-primary.btn-lg
+                {:href "#/register"
+                 :events [[:click (fn [e] (login/register-dialog (:bus @state)))]]}
+                "Register"]])])))
 
 (defn init
   [bus]

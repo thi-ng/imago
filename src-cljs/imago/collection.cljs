@@ -118,8 +118,8 @@
          [:div.row
           (for [{:syms [?thumb ?xl]} (:items @local)]
             [:div.col-xs-4.col-md-2
-             [:a.thumbnail {:href (str "/media/image/" ?xl)}
-              [:img {:src (str "/media/image/" ?thumb)}]]])]
+             [:a.thumbnail {:href (config/api-route :image ?xl)}
+              [:img {:src (config/api-route :image ?thumb)}]]])]
          ])))
 
 (defn load-collection
