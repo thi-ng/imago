@@ -118,6 +118,7 @@
 (defn wrapped-api-handler
   [req params validate-id handler]
   (info "-------------------")
+  (info :uri (:uri req))
   (info :cookies (:cookies req) :session (:session req))
   (if (valid-api-accept? req)
     (let [[params err] (if validate-id
@@ -235,7 +236,7 @@
         (wrapped-api-handler
          req {:user user} :get-user-collections ;; TODO
          (fn [req _]
-           (let [colls (->> (config/query-spec :get-user-collections user)
+           (let [colls (->> (config/query-spec :get-user-collections user (:id (current-user req)))
                             (gapi/query graph)
                             (map (fn [[k v]] (first v))))]
              (info :user-colls colls)
@@ -264,7 +265,7 @@
                            (gapi/pack-triples))]
              (if (seq coll)
                (api-response req coll 200)
-               (api-response req "unknown collection" 404))))))
+               (api-response req "Unauthorized" 403))))))
    (POST "/collections/:coll-id" [coll-id :as req]
          (info req)
          (wrapped-api-handler
@@ -291,11 +292,12 @@
            (info :new-coll user title)
            (let [coll (model/make-collection-with-rights
                        {:creator (:id user)
-                        :parent (ffirst (trio/select @(:g graph) nil (:type rdf) (:Repository imago)))}
+                        :parent (ffirst (trio/select @(:g graph) nil (:type rdf) (:Repository imago)))
+                        :presets [(-> config/version-presets :thumb-imago :id)]}
                        {:user (:id user) :perm (:canEditColl imago)})]
              (info :new-coll coll)
              (gapi/add-triples graph (trio/triple-seq coll))
-             (api-response req coll 201)))))))
+             (api-response req (into {} coll) 201)))))))
 
 (defroutes all-routes
   (GET "/" [:as req]

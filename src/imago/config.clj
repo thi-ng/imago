@@ -85,9 +85,9 @@
                         ['?u (:nick foaf) user]
                         ['?u (:password foaf) (utils/sha-256 user pass salt)]
                         ['?repo (:type rdf) (:Repository imago)]
-                        ['?repo (:accessRights dcterms) '?rs]
-                        ['?rs (:subject rdf) '?u]
-                        ['?rs (:predicate rdf) '?p]]}
+                        ['?repo (:accessRights dcterms) '?r]
+                        ['?r (:subject rdf) '?u]
+                        ['?r (:predicate rdf) '?p]]}
                {:optional [['?u (:name foaf) '?name]]}]
        :bind {'?user-name (constantly user)}
        :aggregate {'?perms {:use '?p :fn #(into #{} %)}}})
@@ -110,19 +110,33 @@
        :aggregate {'?perms {:use '?p :fn #(into #{} %)}}})
 
     :get-user-collections
-    (fn [user]
-      {:select '[?id ?title ?thumb ?date]
+    (fn [user curr-user]
+      {:select '[?id ?title ?thumb ?date ?perms]
        :query [{:where [['?u (:type rdf) (:User imago)]
                         ['?u (:nick foaf) user]
                         ['?id (:creator dcterms) '?u]
                         ['?id (:type rdf) (:MediaCollection imago)]
                         ['?id (:title dcterms) '?title]]}
+               {:optional [['?id (:accessRights dcterms) '?r]
+                           ['?r (:subject rdf) '?curr-u]
+                           ['?r (:predicate rdf) '?p]]}
+               {:optional [['?au (:type rdf) (:AnonUser imago)]
+                           ['?id (:accessRights dcterms) '?r]
+                           ['?r (:subject rdf) '?au]
+                           ['?r (:predicate rdf) '?p]]}
+               {:optional [['?ra (:type rdf) (:RightsStatement dctypes)]
+                           ['?ra (:subject rdf) '?curr-u]
+                           ['?ra (:predicate rdf) '?p]]
+                :values {'?p #{(:canEditRepo imago)}}}
                {:optional [['?img (:isPartOf dcterms) '?id]
                            ['?img (:hasVersion dcterms) '?thumb]
                            ['?img (:dateSubmitted dcterms) '?date]
-                           ['?thumb (:references dcterms) "617e6192-d1a3-4422-b3cc-d7fcfb782de5"]]}]
+                           ['?thumb (:references dcterms) (-> version-presets :thumb-imago :id)]]}]
        :group '?id
-       :order-desc '?date})
+       :aggregate {'?perms {:use '?p :fn #(into #{} (filter identity %))}}
+       :order-desc '?date
+       :values {'?curr-u #{curr-user}}
+       :filter {'?perms #(do (prn :filter %) (seq %))}})
     :get-collection
     (fn [coll-id]
       {:select :*
@@ -140,9 +154,11 @@
     :describe-collection
     (fn [user coll-id]
       {:describe '[?x ?i ?v ?r]
-       :query [{:where [['?x (:type rdf) (:MediaCollection imago)]
-                        ['?x (:accessRights dcterms) '?r]
-                        ['?r (:subject rdf) user]]}
+       :query [{:where [['?x (:type rdf) (:MediaCollection imago)]]}
+               {:optional [['?x (:accessRights dcterms) '?r]
+                           ['?r (:subject rdf) user]]}
+               {:optional [['?r (:subject rdf) user]
+                           ['?r (:predicate rdf) (:canEditRepo imago)]]}
                {:optional [['?i (:isPartOf dcterms) '?x]
                            ['?i (:hasVersion dcterms) '?v]]}]
        :values {'?x #{coll-id}}})
