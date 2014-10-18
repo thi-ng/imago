@@ -184,7 +184,7 @@
 (defentity StillImage (:StillImage dctypes)
   {:title        {:prop (:title dcterms)}
    :creator      {:prop (:creator dcterms)
-                  :validate [(v/uuid4)]
+                  :validate [(v/optional (v/uuid4))]
                   :init (pick-id :user)}
    :contributors {:prop (:contributor dcterms)
                   :init (pick-id-coll :contributors)

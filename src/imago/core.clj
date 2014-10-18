@@ -275,13 +275,15 @@
                   files   (filter :tempfile (vals (:params req)))
                   presets (collection-presets coll-id)
                   img-map (zipmap
-                           (repeatedly #(model/make-stillimage {:coll-id coll-id :publisher user-id}))
+                           (repeatedly #(model/make-stillimage {:colls [coll-id] :publisher user-id}))
                            (map :tempfile files))
                   _       (info :img-map img-map)
                   _       (info :presets presets)
-                  images  (handle-uploaded-images img-map presets)]
+                  images  (handle-uploaded-images img-map presets)
+                  versions (mapcat :versions images)]
               (->> images
-                   (concat [[coll-id (:modified dcterms) (utils/timestamp)]])
+                   (map (fn [img] (update-in img [:versions] #(map :id %))))
+                   (concat [[coll-id (:modified dcterms) (utils/timestamp)]] versions)
                    (trio/triple-seq)
                    (gapi/add-triples graph))
               (api-response req (mapv :id images) 200)))))
