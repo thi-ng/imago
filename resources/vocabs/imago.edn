@@ -26,6 +26,9 @@
 
  ;; roles & permissions
 
+ {"imago:passwordSha256Hash"
+  {"rdf:type" "rdf:Property"
+   "rdfs:domain" "foaf:Agent"}}
  [["imago:canViewColl"
    "imago:canViewMeta"
    "imago:canViewVersion"

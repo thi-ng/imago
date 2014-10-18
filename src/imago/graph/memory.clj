@@ -11,7 +11,7 @@
   api/ImagoGraph
   (get-anon-user
     [_]
-    (->> (config/query-spec :get-anon-user)
+    (->> (api/query-spec :get-anon-user)
          (api/query _)
          (q/keywordize-result-vars)
          (first)))

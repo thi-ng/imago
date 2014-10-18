@@ -1,13 +1,11 @@
 (ns imago.config
   (:require
-   [imago.graph.vocab :refer :all]
    [imago.graph.model :as model]
    [imago.utils :as utils]
    [thi.ng.validate.core :as v]
    [environ.core :refer [env]]))
 
 (def mode        (or (env :imago-deploy-mode) :dev))
-(def salt        (or (env :imago-salt) "969a606798c94d03b53c3fa5e83b4594"))
 (def default-dir (str (System/getProperty "user.home") "/.imago"))
 
 (def mime-types
@@ -51,9 +49,7 @@
    {:impl-ns (or (env :imago-graph-impl) "imago.graph.memory")
     :default-graph (model/default-graph
                      {:presets version-presets
-                      :mime-types mime-types
-                      :salt salt})
-    :salt    salt
+                      :mime-types mime-types})
     :memory  {:path (or (env :imago-graph-path) (str default-dir "/graph.db"))}}
 
    :storage
@@ -76,114 +72,7 @@
            :new-collection
            {:user {:perms [(v/required-keys ["imago:canCreateColl"] "insufficient permission")]}
             :title [(v/optional (v/max-length 64))]}}}
-
-   :queries
-   {:login
-    (fn [user pass]
-      {:select '[{?id ?u} ?user-name ?name ?perms]
-       :query [{:where [['?u (:type rdf) (:User imago)]
-                        ['?u (:nick foaf) user]
-                        ['?u (:password foaf) (utils/sha-256 user pass salt)]
-                        ['?repo (:type rdf) (:Repository imago)]
-                        ['?repo (:accessRights dcterms) '?r]
-                        ['?r (:subject rdf) '?u]
-                        ['?r (:predicate rdf) '?p]]}
-               {:optional [['?u (:name foaf) '?name]]}]
-       :bind {'?user-name (constantly user)}
-       :aggregate {'?perms {:use '?p :fn #(into #{} %)}}})
-
-    :get-repo
-    (fn []
-      {:select '?repo
-       :query [{:where [['?repo (:type rdf) (:Repository imago)]]}]})
-
-    :get-anon-user
-    (fn []
-      {:select ['{?id ?u} '?user-name '?n '?perms {'?anon (constantly true)}]
-       :query [{:where [['?u (:type rdf) (:AnonUser imago)]
-                        ['?u (:nick foaf) '?user-name]
-                        ['?repo (:type rdf) (:Repository imago)]
-                        ['?repo (:accessRights dcterms) '?rs]
-                        ['?rs (:subject rdf) '?u]
-                        ['?rs (:predicate rdf) '?p]]}
-               {:optional [['?u (:name foaf) '?name]]}]
-       :aggregate {'?perms {:use '?p :fn #(into #{} %)}}})
-
-    :get-user-collections
-    (fn [user curr-user]
-      {:select '[?id ?title ?thumb ?date ?perms]
-       :query [{:where [['?u (:type rdf) (:User imago)]
-                        ['?u (:nick foaf) user]
-                        ['?id (:creator dcterms) '?u]
-                        ['?id (:type rdf) (:MediaCollection imago)]
-                        ['?id (:title dcterms) '?title]]}
-               {:optional [['?id (:accessRights dcterms) '?r]
-                           ['?r (:subject rdf) '?curr-u]
-                           ['?r (:predicate rdf) '?p]]}
-               {:optional [['?au (:type rdf) (:AnonUser imago)]
-                           ['?id (:accessRights dcterms) '?r]
-                           ['?r (:subject rdf) '?au]
-                           ['?r (:predicate rdf) '?p]]}
-               {:optional [['?ra (:type rdf) (:RightsStatement dctypes)]
-                           ['?ra (:subject rdf) '?curr-u]
-                           ['?ra (:predicate rdf) '?p]]
-                :values {'?p #{(:canEditRepo imago)}}}
-               {:optional [['?img (:isPartOf dcterms) '?id]
-                           ['?img (:hasVersion dcterms) '?thumb]
-                           ['?img (:dateSubmitted dcterms) '?date]
-                           ['?thumb (:references dcterms) (-> version-presets :thumb-imago :id)]]}]
-       :group '?id
-       :aggregate {'?perms {:use '?p :fn #(into #{} (filter identity %))}}
-       :order-desc '?date
-       :values {'?curr-u #{curr-user}}
-       :filter {'?perms #(do (prn :filter %) (seq %))}})
-    :get-collection
-    (fn [coll-id]
-      {:select :*
-       :query [{:where [[coll-id (:type rdf) (:MediaCollection imago)]
-                        [coll-id (:title dcterms) '?title]
-                        ['?id (:type rdf) (:StillImage imago)]
-                        ['?id (:isPartOf dcterms) coll-id]
-                        ['?id (:hasVersion dcterms) '?version]
-                        ['?version (:references dcterms) '?preset]
-                        ['?preset (:width imago) '?w]
-                        ['?preset (:height imago) '?h]
-                        ['?preset (:format dcterms) '?mime]]}]
-       :group '?id})
-
-    :describe-collection
-    (fn [user coll-id]
-      {:describe '[?x ?i ?v ?r]
-       :query [{:where [['?x (:type rdf) (:MediaCollection imago)]]}
-               {:optional [['?x (:accessRights dcterms) '?r]
-                           ['?r (:subject rdf) user]]}
-               {:optional [['?r (:subject rdf) user]
-                           ['?r (:predicate rdf) (:canEditRepo imago)]]}
-               {:optional [['?i (:isPartOf dcterms) '?x]
-                           ['?i (:hasVersion dcterms) '?v]]}]
-       :values {'?x #{coll-id}}})
-
-    :collection-presets
-    (fn [coll-id]
-      {:select :*
-       :query [{:where [[coll-id (:type rdf) (:MediaCollection imago)]
-                        [coll-id (:usesPreset imago) '?preset]
-                        ['?preset (:restrict imago) '?src-mime]
-                        ['?preset (:crop imago) '?crop]
-                        ['?preset (:filter imago) '?filter]
-                        ['?preset (:format dcterms) '?mime]]}
-               {:optional [['?preset (:width imago) '?w]]}
-               {:optional [['?preset (:height imago) '?h]]}]
-       :group '?preset
-       :aggregate {'?restrict {:use '?src-mime :fn #(into #{} %)}}})
-
-    :media-item-version
-    (fn [version]
-      {:select '[?id ?mime]
-       :query [{:where [['?id (:type rdf) (:StillImage dctypes)]
-                        ['?id (:hasVersion dcterms) version]
-                        [version (:references dcterms) '?preset]
-                        ['?preset (:format dcterms) '?mime]]}]})}
+   
    :ui
    {:dev  {:css ["/css/bootstrap.min.css"
                  "/css/bootstrap-theme.min.css"
@@ -197,5 +86,3 @@
            :js  ["/js/app.min.js"
                  "/lib/sha256.js"]}}})
 
-(defn query-spec
-  [id & args] (apply (-> app :queries id) args))

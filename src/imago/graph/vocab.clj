@@ -59,8 +59,7 @@
   :publisher
   :references
   :rights
-  :title
-  )
+  :title)
 
 (defvocab dctypes
   :Collection
@@ -87,9 +86,7 @@
   :lastName
   :mbox
   :name
-  :nick
-  :password
-  )
+  :nick)
 
 (defvocab doap :Project)
 

@@ -135,7 +135,7 @@
 
 (defn collection-presets
   [coll-id]
-  (->> (config/query-spec :collection-presets coll-id)
+  (->> (gapi/query-spec :collection-presets coll-id)
        (gapi/query graph)
        (vals)
        (map first)
@@ -149,7 +149,7 @@
   added."
   [src]
   (fn [img [pid w h crop flt mime restrict]]
-    (let [version (model/make-media-version {:id (str (:id img) "-" pid) :preset pid})
+    (let [version (model/make-imageversion {:id (str (:id img) "-" pid) :preset pid})
           tmp     (File/createTempFile "imago" nil)]
       (image/resize-image
        {:src src
@@ -191,13 +191,13 @@
                                    :name fullname
                                    :user-name username
                                    :email email
-                                   :password (utils/sha-256 username pass1 config/salt)})
-                 {:syms [?repo]} (->> (config/query-spec :get-repo)
+                                   :password pass1})
+                 {:syms [?repo]} (->> (gapi/query-spec :get-repo)
                                       (gapi/query graph)
                                       (first))
                  base-rights     {:user (:id user) :context ?repo}
                  perms           #{(:canCreateColl imago) (:canViewRepo imago)}
-                 rights          (map #(model/make-rights-statement (assoc base-rights :perm %)) perms)
+                 rights          (map #(model/make-rightsstatement (assoc base-rights :perm %)) perms)
                  repo-rights     (map #(trio/triple ?repo (:accessRights dcterms) (:id %)) rights)
                  user'           (-> user (select-keys [:id :user-name :name]) (assoc :perms perms))
                  triples         (trio/triple-seq (concat [user] rights repo-rights))]
@@ -209,7 +209,7 @@
          (wrapped-api-handler
           req (:params req) :login
           (fn [req {:keys [user pass]}]
-            (let [user' (->> (config/query-spec :login user pass)
+            (let [user' (->> (gapi/query-spec :login user pass model/salt)
                              (gapi/query graph)
                              (q/keywordize-result-vars)
                              (first))]
@@ -236,7 +236,7 @@
         (wrapped-api-handler
          req {:user user} :get-user-collections ;; TODO
          (fn [req _]
-           (let [colls (->> (config/query-spec :get-user-collections user (:id (current-user req)))
+           (let [colls (->> (gapi/query-spec :get-user-collections user (:id (current-user req)))
                             (gapi/query graph)
                             (map (fn [[k v]] (first v))))]
              (info :user-colls colls)
@@ -246,7 +246,7 @@
 (def media-routes
   (routes
    (GET "/images/:version" [version :as req]
-        (let [img (->> (config/query-spec :media-item-version version)
+        (let [img (->> (gapi/query-spec :media-item-version version)
                        (gapi/query graph)
                        (first))]
           (info :item img)
@@ -260,7 +260,7 @@
          req {:coll-id coll-id} :get-collection
          (fn [req params]
            (let [user (-> req current-user :id)
-                 coll (->> (config/query-spec :describe-collection user coll-id)
+                 coll (->> (gapi/query-spec :describe-collection user coll-id)
                            (gapi/query graph)
                            (gapi/pack-triples))]
              (if (seq coll)
@@ -275,7 +275,7 @@
                   files   (filter :tempfile (vals (:params req)))
                   presets (collection-presets coll-id)
                   img-map (zipmap
-                           (repeatedly #(model/make-image {:coll-id coll-id :publisher user-id}))
+                           (repeatedly #(model/make-stillimage {:coll-id coll-id :publisher user-id}))
                            (map :tempfile files))
                   _       (info :img-map img-map)
                   _       (info :presets presets)
@@ -292,7 +292,7 @@
            (info :new-coll user title)
            (let [coll (model/make-collection-with-rights
                        {:creator (:id user)
-                        :parent (ffirst (trio/select @(:g graph) nil (:type rdf) (:Repository imago)))
+                        :repo (ffirst (trio/select @(:g graph) nil (:type rdf) (:Repository imago)))
                         :presets [(-> config/version-presets :thumb-imago :id)]}
                        {:user (:id user) :perm (:canEditColl imago)})]
              (info :new-coll coll)
@@ -306,8 +306,8 @@
            (html5)
            (resp/response)
            (resp/header "Content-Type" "text/html")
-           (assoc-in [:session :user]
-                     (or (current-user req) (gapi/get-anon-user graph)))))
+           (resp/charset "utf-8")
+           (assoc-in [:session :user] (or (current-user req) (gapi/get-anon-user graph)))))
   (context "/users" [] user-routes)
   (context "/media" [] media-routes)
   (route/not-found "404"))
