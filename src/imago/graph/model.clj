@@ -156,7 +156,7 @@
   {:user    {:prop (:subject rdf)
              :validate [(v/uuid4)]
              :init (pick-id :user)}
-   :perm    {:prop (:subject rdf)
+   :perm    {:prop (:predicate rdf)
              :validate [(v/required)]}
    :context {:prop (:object rdf)
              :validate [(v/uuid4)]
