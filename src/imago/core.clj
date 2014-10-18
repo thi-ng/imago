@@ -296,7 +296,7 @@
                        {:creator (:id user)
                         :repo (ffirst (trio/select @(:g graph) nil (:type rdf) (:Repository imago)))
                         :presets [(-> config/version-presets :thumb-imago :id)]}
-                       {:user (:id user) :perm (:canEditColl imago)})]
+                       {(:id user) (:canEditColl imago)})]
              (info :new-coll coll)
              (gapi/add-triples graph (trio/triple-seq coll))
              (api-response req (into {} coll) 201)))))))
