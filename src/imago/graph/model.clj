@@ -94,7 +94,7 @@
           {:describe '~'?id
            :from g#
            :query [{:where [['~'?id "rdf:type" ~type]]}]
-           :values {'~'?id #{(:id id#)}}})))))
+           :values {'~'?id #{id#}}})))))
 
 (defentity User (:User imago)
   {:user-name {:prop (:nick foaf)
