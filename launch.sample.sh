@@ -11,6 +11,8 @@ export IMAGO_S3_PREFIX=imago
 export IMAGO_GRAPH_IMPL=imago.graph.memory
 export IMAGO_GRAPH_PATH=./imago-dev/graph.db
 
+export IMAGO_SALT=90ad74e7a8114aadbb053d7c5be166df
+
 echo "launching imago..."
 
 lein $@
