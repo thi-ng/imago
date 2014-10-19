@@ -107,7 +107,7 @@
         ->sym      (comp symbol clojure.core/name)
         props      (assoc props :type {:prop "rdf:type"})
         fields     (cons 'id (map ->sym (keys props)))
-        ctor-name  (.toLowerCase (clojure.core/name name))
+        ctor-name  (utils/->kebab-case name)
         ctor       (symbol (str 'make- ctor-name))
         dctor      (symbol (str 'describe- ctor-name))
         dctor-as   (symbol (str 'describe-as- ctor-name))
@@ -306,7 +306,7 @@
         (fn [acc [user perms]]
           (reduce
            (fn [[e rs] p]
-             (let [r (make-rightsstatement {:user user :perm p :context (:id e)})]
+             (let [r (make-rights-statement {:user user :perm p :context (:id e)})]
                [(update-in e [:rights] conj (:id r))
                 (conj rs r)]))
            acc (if (coll? perms) perms [perms])))
@@ -321,9 +321,9 @@
   [coll rights]
   (-> coll make-collection (add-entity-rights rights)))
 
-(defn make-imageversion-with-rights
+(defn make-image-version-with-rights
   [v rights]
-  (-> v make-imageversion (add-entity-rights rights)))
+  (-> v make-image-version (add-entity-rights rights)))
 
 (defn default-graph
   [{:keys [presets mime-types]}]
@@ -334,7 +334,7 @@
                           :filter (name (or filter :none))
                           :crop (boolean crop)}
                          (merge v)
-                         (make-imageversionpreset)))
+                         (make-image-versionpreset)))
                   presets)
         admin    (make-user
                   {:user-name "admin"

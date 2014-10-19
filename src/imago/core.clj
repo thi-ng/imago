@@ -149,7 +149,7 @@
   added."
   [src]
   (fn [img [pid w h crop flt mime restrict]]
-    (let [version (model/make-imageversion {:id (str (:id img) "-" pid) :preset pid})
+    (let [version (model/make-image-version {:id (str (:id img) "-" pid) :preset pid})
           tmp     (File/createTempFile "imago" nil)]
       (image/resize-image
        {:src src
@@ -197,7 +197,7 @@
                                       (first))
                  base-rights     {:user (:id user) :context ?repo}
                  perms           #{(:canCreateColl imago) (:canViewRepo imago)}
-                 rights          (map #(model/make-rightsstatement (assoc base-rights :perm %)) perms)
+                 rights          (map #(model/make-rights-statement (assoc base-rights :perm %)) perms)
                  repo-rights     (map #(trio/triple ?repo (:accessRights dcterms) (:id %)) rights)
                  user'           (-> user (select-keys [:id :user-name :name]) (assoc :perms perms))
                  triples         (trio/triple-seq (concat [user] rights repo-rights))]

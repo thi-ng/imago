@@ -1,9 +1,13 @@
 (ns imago.utils
   (:require
+   [clojure.string :as str]
    [clj-time.core :as cljt]
    [clj-time.coerce :as cljtc])
   (:import
    [java.security NoSuchAlgorithmException MessageDigest]))
+
+(defn ->kebab-case
+  [x] (-> x (str/replace #"([a-z\d])([A-Z])" "$1-$2") str/lower-case))
 
 (defn new-uuid [] (str (java.util.UUID/randomUUID)))
 
