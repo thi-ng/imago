@@ -274,16 +274,20 @@
             (let [user-id (-> req current-user :id)
                   files   (filter :tempfile (vals (:params req)))
                   presets (collection-presets coll-id)
+                  coll    (model/describe-as-collection @(:g graph) coll-id)
                   img-map (zipmap
-                           (repeatedly #(model/make-stillimage {:colls [coll-id] :publisher user-id}))
+                           (repeatedly #(model/make-stillimage {:colls [coll] :publisher user-id}))
                            (map :tempfile files))
                   _       (info :img-map img-map)
                   _       (info :presets presets)
                   images  (handle-uploaded-images img-map presets)
-                  versions (mapcat :versions images)]
+                  versions (mapcat :versions images)
+                  coll    (-> coll
+                              (update-in [:media] into (map :id images))
+                              (assoc :modified (utils/timestamp)))]
               (->> images
                    (map (fn [img] (update-in img [:versions] #(map :id %))))
-                   (concat [[coll-id (:modified dcterms) (utils/timestamp)]] versions)
+                   (concat [coll] versions)
                    (trio/triple-seq)
                    (gapi/add-triples graph))
               (api-response req (mapv :id images) 200)))))
