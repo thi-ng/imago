@@ -5,6 +5,7 @@
    [thi.ng.trio.core :as trio]
    [thi.ng.trio.query :as q]
    [thi.ng.validate.core :as v]
+   [thi.ng.common.data.core :as d]
    [environ.core :refer [env]]
    [slingshot.slingshot :refer [throw+]]))
 
@@ -33,6 +34,21 @@
        acc))
    {} props))
 
+(defn wrap-optional [vals] (mapv #(v/optional %) vals))
+
+(defn build-validators
+  [props]
+  (->> (extract-key props :validate)
+       (reduce-kv
+        (fn [acc k v]
+          (assoc
+              acc k
+              (if (and (-> props k :optional) (not (map? v)))
+                (wrap-optional v)
+                ;;(reduce-kv (fn [a' k' v'] (assoc a' k' (wrap-optional v'))) v v)
+                v)))
+        {})))
+
 (defn apply-initializers
   [props inits]
   (reduce-kv
@@ -54,6 +70,36 @@
     (let [k (id x)]
       (if (map? (first k)) (mapv :id k) (vec k)))))
 
+(defn build-patterns
+  [props]
+  (mapv (fn [[k v]] ['?id (:prop v) (symbol (str \? (name k)))]) props))
+
+(defn build-describe-spec
+  [g id props]
+  (let [[opt req] (d/bisect (fn [[_ v]] (:optional v)) props)
+        patterns [{:where (build-patterns req)}]
+        patterns (if (seq opt)
+                   (->> opt
+                        (build-patterns)
+                        (map (fn [p] {:optional [p]}))
+                        (into patterns))
+                   patterns)]
+    {:select :*
+     :from g
+     :query patterns
+     :values {'?id #{id}}}))
+
+(defn prepare-describe-results
+  [props res]
+  (reduce-kv
+   (fn [acc k v]
+     (let [p (keyword (q/qvar-name k))]
+       (assoc acc p
+              (if (and (== 1 (count v)) (-> props p :card (not= :*)))
+                (first v)
+                (vec v)))))
+   {} res))
+
 (defmacro defentity
   [name rdf-type props]
   (let [name       name
@@ -61,32 +107,34 @@
         ->sym      (comp symbol clojure.core/name)
         props      (assoc props :type {:prop "rdf:type"})
         fields     (cons 'id (map ->sym (keys props)))
-        validators (extract-key props :validate)
-        defaults   (extract-key props :default)
-        inits      (extract-key props :init)
         ctor-name  (.toLowerCase (clojure.core/name name))
         ctor       (symbol (str 'make- ctor-name))
         dctor      (symbol (str 'describe- ctor-name))
+        dctor-as   (symbol (str 'describe-as- ctor-name))
         mctor      (symbol (str 'map-> name))]
-    ;;(prn :props props)
-    ;;(prn :fields fields)
-    ;;(prn :validators validators)
-    ;;(prn :inits inits)
-    ;;(prn :defaults defaults)
-    `(do
+    `(let [;;validators# (extract-key ~props :validate)
+           validators# (build-validators ~props)
+           defaults#   (extract-key ~props :default)
+           inits#      (extract-key ~props :init)]
+       ;;(prn "-------- " ~type)
+       ;;(prn :props props)
+       ;;(prn :fields fields)
+       ;;(prn :validators validators#)
+       ;;(prn :inits inits)
+       ;;(prn :defaults defaults)
        (defrecord ~name [~@fields]
          trio/PTripleSeq
          (~'triple-seq
            [_#] (filtered-triple-seq {~'id (triple-map ~props _#)})))
        (defn ~ctor
          [opts#]
-         (let [[opts# err#] (-> opts#
-                                (assoc :id (or (:id opts#) (utils/new-uuid)))
-                                (assoc :type (or (:type opts#) ~type))
-                                (apply-initializers ~inits)
-                                (inject-defaults ~defaults)
-                                ;;((fn [x#] (prn x#) x#))
-                                (v/validate ~validators))]
+         (let [[opts# err#]
+               (-> opts#
+                   (assoc :id (or (:id opts#) (utils/new-uuid)))
+                   (assoc :type (or (:type opts#) ~type))
+                   (apply-initializers inits#)
+                   (inject-defaults defaults#)
+                   (v/validate validators#))]
            (if (nil? err#) (~mctor opts#) (throw+ err#))))
        (defn ~dctor
          [g# id#]
@@ -94,23 +142,37 @@
           {:describe '~'?id
            :from g#
            :query [{:where [['~'?id "rdf:type" ~type]]}]
-           :values {'~'?id #{id#}}})))))
+           :values {'~'?id #{id#}}}))
+       (defn ~dctor-as
+         [g# id#]
+         (->> ~props
+              (build-describe-spec g# id#)
+              (q/query)
+              (q/accumulate-result-vars)
+              ;;((fn [x#] (prn x#) x#))
+              (prepare-describe-results ~props)
+              (~ctor)))
+       )))
 
 (defentity User (:User imago)
   {:user-name {:prop (:nick foaf)
                :validate [(v/string) (v/min-length 3) (v/max-length 32)]}
    :name      {:prop (:name foaf)
-               :validate [(v/optional (v/string)) (v/optional (v/max-length 64))]}
+               :validate [(v/string) (v/max-length 64)]
+               :optional true}
    :mbox      {:prop (:mbox foaf)
-               :validate [(v/optional (v/mailto))]}
+               :validate [(v/mailto)]
+               :optional true}
    :homepage  {:prop (:homepage foaf)
-               :validate [(v/optional (v/url))]}
+               :validate [(v/url)]
+               :optional true}
    :password  {:prop (:passwordSha256Hash imago)
-               :validate [(v/optional (v/string)) (v/optional (v/fixed-length 64))]
+               :validate [(v/string) (v/fixed-length 64)]
                :init (fn [{:keys [user-name password]}]
                        (if (= 64 (count password))
                          password
-                         (utils/sha-256 user-name password salt)))}
+                         (utils/sha-256 user-name password salt)))
+               :optional true}
    :created   {:prop (:created dcterms)
                :validate [(v/number) (v/pos)]
                :default (fn [_] (utils/timestamp))}})
@@ -125,12 +187,13 @@
    :rights    {:prop (:accessRights dcterms)
                :init (pick-id-coll :rights)
                :default (fn [_] [])
-               :validate {:* [(v/uuid4)]}}})
+               :validate {:* [(v/uuid4)]}
+               :card :*}})
 
 (defentity Collection (:MediaCollection imago)
   {:title    {:prop (:title dcterms)
               :validate [(v/string)]
-              :default (fn [_] "Untitled")}
+              :default (fn [_] "Untitled collection")}
    :creator  {:prop (:creator dcterms)
               :validate [(v/uuid4)]
               :init (pick-id :creator)}
@@ -139,6 +202,10 @@
               :default (fn [_] (utils/timestamp))}
    :modified {:prop (:modified dcterms)
               :validate [(v/number) (v/pos)]
+              :init (fn [{:keys [modified]}]
+                      (if (coll? modified)
+                        (last (sort modified))
+                        modified))
               :default (fn [_] (utils/timestamp))}
    :repo     {:prop (:isPartOf dcterms)
               :validate [(v/uuid4)]
@@ -146,11 +213,19 @@
    :rights   {:prop (:accessRights dcterms)
               :init (pick-id-coll :rights)
               :default (fn [_] [])
-              :validate {:* [(v/uuid4)]}}
+              :validate {:* [(v/uuid4)]}
+              :card :*}
+   :media    {:prop (:hasPart dcterms)
+              :init (pick-id-coll :media)
+              :default (fn [_] [])
+              :validate {:* [(v/uuid4)]}
+              :optional true
+              :card :*}
    :presets  {:prop (:usesPreset imago)
               :init (pick-id-coll :presets)
               :default (fn [_] [])
-              :validate {:* [(v/uuid4)]}}})
+              :validate {:* [(v/uuid4)]}
+              :card :*}})
 
 (defentity RightsStatement (:RightsStatement dctypes)
   {:user    {:prop (:subject rdf)
@@ -170,26 +245,33 @@
               :validate {:* [(v/string)]}
               :default (fn [_] ["image/png" "image/jpeg"])}
    :width    {:prop (:width imago)
-              :validate [(v/optional (v/number)) (v/optional (v/pos))]}
+              :validate [(v/number) (v/pos)]
+              :optional true}
    :height   {:prop (:height imago)
-              :validate [(v/optional (v/number)) (v/optional (v/pos))]}
+              :validate [(v/number) (v/pos)]
+              :optional true}
    :crop     {:prop (:crop imago)
-              :validate [(v/boolean (constantly false))]}
+              :validate [(v/boolean (constantly false))]
+              :optional true}
    :filter   {:prop (:filter imago)
-              :validate [(v/optional (v/string))]}
+              :validate [(v/string)]
+              :optional true}
    :mime     {:prop (:format dcterms)
               :validate [(v/string)]
               :default (fn [_] "image/jpeg")}})
 
 (defentity StillImage (:StillImage dctypes)
-  {:title        {:prop (:title dcterms)}
+  {:title        {:prop (:title dcterms)
+                  :validate [(v/string)]
+                  :default (fn [_] "Untitled")}
    :creator      {:prop (:creator dcterms)
                   :validate [(v/optional (v/uuid4))]
                   :init (pick-id :user)}
    :contributors {:prop (:contributor dcterms)
                   :init (pick-id-coll :contributors)
                   :default (fn [_] [])
-                  :validate {:* [(v/uuid4)]}}
+                  :validate {:* [(v/uuid4)]}
+                  :card :*}
    :publisher    {:prop (:publisher dcterms)
                   :validate [(v/uuid4)]
                   :init (pick-id :publisher)}
@@ -199,11 +281,13 @@
    :colls        {:prop (:isPartOf dcterms)
                   :validate {:* [(v/uuid4)]}
                   :init (pick-id-coll :colls)
-                  :default (fn [_] [])}
+                  :default (fn [_] [])
+                  :card :*}
    :versions     {:prop (:hasVersion dcterms)
                   :init (pick-id-coll :versions)
                   :default (fn [_] [])
-                  :validate {:* [(v/uuid4)]}}})
+                  :validate {:* [(v/uuid4)]}
+                  :card :*}})
 
 (defentity ImageVersion (:ImageVersion imago)
   {:preset {:prop (:references dcterms)
@@ -212,7 +296,8 @@
    :rights {:prop (:accessRights dcterms)
             :init (pick-id-coll :rights)
             :default (fn [_] [])
-            :validate {:* [(v/uuid4)]}}})
+            :validate {:* [(v/uuid4)]}
+            :card :*}})
 
 (defn add-entity-rights
   [e rights]

@@ -52,6 +52,7 @@
   :dateSubmitted
   :description
   :format
+  :hasPart
   :hasVersion
   :isPartOf
   :license
