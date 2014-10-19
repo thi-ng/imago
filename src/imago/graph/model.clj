@@ -101,19 +101,16 @@
    {} res))
 
 (defmacro defentity
-  [name rdf-type props]
-  (let [name       name
-        type       rdf-type
-        ->sym      (comp symbol clojure.core/name)
-        props      (assoc props :type {:prop "rdf:type"})
+  [name type props]
+  (let [->sym      (comp symbol clojure.core/name)
+        props      (merge {:type {:prop "rdf:type"}} props)
         fields     (cons 'id (map ->sym (keys props)))
         ctor-name  (utils/->kebab-case name)
         ctor       (symbol (str 'make- ctor-name))
         dctor      (symbol (str 'describe- ctor-name))
         dctor-as   (symbol (str 'describe-as- ctor-name))
         mctor      (symbol (str 'map-> name))]
-    `(let [;;validators# (extract-key ~props :validate)
-           validators# (build-validators ~props)
+    `(let [validators# (build-validators ~props)
            defaults#   (extract-key ~props :default)
            inits#      (extract-key ~props :init)]
        ;;(prn "-------- " ~type)
@@ -126,7 +123,12 @@
          trio/PTripleSeq
          (~'triple-seq
            [_#] (filtered-triple-seq {~'id (triple-map ~props _#)})))
+
        (defn ~ctor
+         {:doc ~(str "Constructs a new `" (namespace-munge *ns*) "." `~name "` entity from given map.\n"
+                     "  Applies entity's property intializers, defaults & validation.\n"
+                     "  In case of validation errors, throws map of errors using `slingshot/throw+`.")
+          :arglists '([~'props])}
          [opts#]
          (let [[opts# err#]
                (-> opts#
@@ -136,14 +138,23 @@
                    (inject-defaults defaults#)
                    (v/validate validators#))]
            (if (nil? err#) (~mctor opts#) (throw+ err#))))
+
        (defn ~dctor
+         {:doc ~(str "Executes a :describe query for given entity ID in graph.\n"
+                     "  Returns seq of triples. ")
+          :arglists '([~'graph ~'id])}
          [g# id#]
          (q/query
           {:describe '~'?id
            :from g#
-           :query [{:where [['~'?id "rdf:type" ~type]]}]
+           :query [{:where [['~'?id (-> ~props :type :prop) ~type]]}]
            :values {'~'?id #{id#}}}))
+       
        (defn ~dctor-as
+         {:doc ~(str "Constructs a new `" (namespace-munge *ns*) "." `~name "` entity based on a graph query\n"
+                     "  for given entity ID and its specified props/rels. If returned query results\n"
+                     "  conflict with entity validation, throws map of errors using `slingshot/throw+`.")
+          :arglists '([~'graph ~'id])}
          [g# id#]
          (->> ~props
               (build-describe-spec g# id#)
@@ -151,8 +162,7 @@
               (q/accumulate-result-vars)
               ;;((fn [x#] (prn x#) x#))
               (prepare-describe-results ~props)
-              (~ctor)))
-       )))
+              (~ctor))))))
 
 (defentity User (:User imago)
   {:user-name {:prop (:nick foaf)
