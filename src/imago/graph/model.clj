@@ -334,7 +334,7 @@
                           :filter (name (or filter :none))
                           :crop (boolean crop)}
                          (merge v)
-                         (make-image-versionpreset)))
+                         (make-image-version-preset)))
                   presets)
         admin    (make-user
                   {:user-name "admin"

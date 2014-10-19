@@ -276,7 +276,7 @@
                   presets (collection-presets coll-id)
                   coll    (model/describe-as-collection @(:g graph) coll-id)
                   img-map (zipmap
-                           (repeatedly #(model/make-stillimage {:colls [coll] :publisher user-id}))
+                           (repeatedly #(model/make-still-image {:colls [coll] :publisher user-id}))
                            (map :tempfile files))
                   _       (info :img-map img-map)
                   _       (info :presets presets)
