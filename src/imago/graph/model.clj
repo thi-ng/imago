@@ -23,7 +23,8 @@
            (if-let [ser (:values f)]
              (ser (k rec))
              (k rec))]))
-       (into {})))
+       (into {})
+       (merge (select-keys rec (keys (apply dissoc rec :id (keys props)))))))
 
 (defn extract-key
   [props key]
@@ -70,35 +71,20 @@
     (let [k (id x)]
       (if (map? (first k)) (mapv :id k) (vec k)))))
 
-(defn build-patterns
-  [props]
-  (mapv (fn [[k v]] ['?id (:prop v) (symbol (str \? (name k)))]) props))
-
-(defn build-describe-spec
-  [g id props]
-  (let [[opt req] (d/bisect (fn [[_ v]] (:optional v)) props)
-        patterns [{:where (build-patterns req)}]
-        patterns (if (seq opt)
-                   (->> opt
-                        (build-patterns)
-                        (map (fn [p] {:optional [p]}))
-                        (into patterns))
-                   patterns)]
-    {:select :*
-     :from g
-     :query patterns
-     :values {'?id #{id}}}))
-
-(defn prepare-describe-results
-  [props res]
-  (reduce-kv
-   (fn [acc k v]
-     (let [p (keyword (q/qvar-name k))]
-       (assoc acc p
-              (if (and (== 1 (count v)) (-> props p :card (not= :*)))
-                (first v)
-                (vec v)))))
-   {} res))
+(defn entity-map-from-triples
+  [triples props id]
+  (let [iprop (reduce-kv (fn [acc k v] (assoc acc (:prop v) k)) {} props)
+        conj* (fnil conj [])]
+    (->> triples
+         (filter #(= id (:s %)))
+         (reduce
+          (fn [acc [_ p o]]
+            (let [p' (iprop p p)
+                  op (props p')]
+              (if (and op (-> op :card (not= :*)))
+                (assoc acc p' o)
+                (update-in acc [p'] conj* o))))
+          {:id id}))))
 
 (defmacro defentity
   [name type props]
@@ -109,6 +95,7 @@
         ctor       (symbol (str 'make- ctor-name))
         dctor      (symbol (str 'describe- ctor-name))
         dctor-as   (symbol (str 'describe-as- ctor-name))
+        dctor-as2   (symbol (str 'describe-as- ctor-name '2))
         mctor      (symbol (str 'map-> name))]
     `(let [validators# (build-validators ~props)
            defaults#   (extract-key ~props :default)
@@ -152,17 +139,14 @@
        
        (defn ~dctor-as
          {:doc ~(str "Constructs a new `" (namespace-munge *ns*) "." `~name "` entity based on a graph query\n"
-                     "  for given entity ID and its specified props/rels. If returned query results\n"
-                     "  conflict with entity validation, throws map of errors using `slingshot/throw+`.")
+                     "  for given entity ID and its specified props/rels (any additional rels will be included\n"
+                     "  too, but are not validated during construction). If returned query results conflict\n"
+                     "  with entity validation, throws map of errors using `slingshot/throw+`.")
           :arglists '([~'graph ~'id])}
          [g# id#]
-         (->> ~props
-              (build-describe-spec g# id#)
-              (q/query)
-              (q/accumulate-result-vars)
-              ;;((fn [x#] (prn x#) x#))
-              (prepare-describe-results ~props)
-              (~ctor))))))
+         (-> (~dctor g# id#)
+             (entity-map-from-triples ~props id#)
+             (~ctor))))))
 
 (defentity User (:User imago)
   {:user-name {:prop (:nick foaf)
