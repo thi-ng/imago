@@ -5,6 +5,11 @@
    [imago.config :as config]
    [thi.ng.trio.core :as trio]
    [thi.ng.trio.query :as q]
+   [thi.ng.trio.vocabs.utils]
+   [thi.ng.trio.vocabs.rdf :refer [rdf]]
+   [thi.ng.trio.vocabs.rdfs :refer [rdfs]]
+   [thi.ng.trio.vocabs.owl :refer [owl]]
+   [thi.ng.trio.vocabs.dcterms :refer [dcterms]]
    [thi.ng.cljs.async :as async]
    [thi.ng.cljs.log :refer [debug info warn]]
    [thi.ng.cljs.route :as route]
@@ -96,7 +101,7 @@
          [:div.row
           [:div.col-xs-12
            [:h2 (:title @local)]]]
-         (when (get-in (:perms @local) [(-> @state :user :id) "imago:canEditColl"])
+         (when (get-in (:perms @local) [(-> @state :user :id) (:edit-coll config/perms)])
            (list
             [:div#dropzone-wrapper.jumbotron
              {:events [[:dragenter (fn [e] (.stopPropagation e) (dom/add-class! (dom/by-id "dropzone-wrapper") "dropzone-active"))]
@@ -134,25 +139,26 @@
    :edn?    true
    :success (fn [status body]
               (let [graph (trio/as-model (:body body))
-                    title (-> graph (trio/select (:id @local) "dcterms:title" nil) (first) (peek))
-                    owner (-> graph (trio/select (:id @local) "dcterms:creator" nil) (first) (peek))
-                    perms (->> {:select '[?perms]
+                    title (-> graph (trio/select (:id @local) (:title dcterms) nil) (first) (peek))
+                    owner (-> graph (trio/select (:id @local) (:creator dcterms) nil) (first) (peek))
+                    perms (->> {:select ['?perms]
                                 :from graph
-                                :query [{:where '[[?r "rdf:type" "dctypes:RightsStatement"]
-                                                  [?r "rdf:subject" ?u]
-                                                  [?r "rdf:predicate" ?p]]}]
+                                :query [{:where [['?r (:type rdf) "http://purl.org/dc/dcmitype/RightsStatement"]
+                                                 ['?r (:subject rdf) '?u]
+                                                 ['?r (:predicate rdf) '?p]]}]
                                 :aggregate {'?perms {:use '?p :fn #(into #{} %)}}
                                 :group '?u}
                                (q/query)
                                (reduce-kv #(assoc %1 %2 (%3 '?perms)) {}))
                     items (q/query {:select :*
                                     :from graph
-                                    :query [{:where [['?img "dcterms:hasVersion" '?thumb]
-                                                     ['?img "dcterms:dateSubmitted" '?time]
-                                                     ['?thumb "dcterms:references" (:imago-thumb config/presets)]]}
-                                            {:optional [['?img "dcterms:hasVersion" '?xl]
-                                                        ['?xl "dcterms:references" (:imago-xl config/presets)]]}]
+                                    :query [{:where [['?img (:hasVersion dcterms) '?thumb]
+                                                     ['?img (:dateSubmitted dcterms) '?time]
+                                                     ['?thumb (:references dcterms) (:imago-thumb config/presets)]]}
+                                            {:optional [['?img (:hasVersion dcterms) '?xl]
+                                                        ['?xl (:references dcterms) (:imago-xl config/presets)]]}]
                                     :order-desc '?time})]
+                (debug :model (:body body))
                 (debug :coll-perms perms)
                 (swap!
                  local assoc

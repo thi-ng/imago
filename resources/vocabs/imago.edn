@@ -1,63 +1,86 @@
-[;; media items & collections
- {"imago:Repository"
-  {"rdfs:subClassOf" "dctypes:Dataset"}}
- {"imago:MediaCollection"
-  {"rdfs:subClassOf" "dctypes:Collection"}}
- {"imago:ImageVersion"
-  {"rdfs:subClass" "dctypes:StillImage"}}
- {"imago:usesPreset" {"rdf:type" "rdf:Property"}}
+{:prefixes
+ {"imago"   "http://imago.thi.ng/owl/"
+  "rdf"     "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  "rdfs"    "http://www.w3.org/2000/01/rdf-schema#"
+  "owl"     "http://www.w3.org/2002/07/owl#"
+  "foaf"    "http://xmlns.com/foaf/0.1/"
+  "dcterms" "http://purl.org/dc/terms/"
+  "dctypes" "http://purl.org/dc/dcmitype/"}
+ :triples
+ [
+  ;; media items & collections
 
- ;; media presets
+  {"imago:Repository"
+   {"rdfs:subClassOf" "dctypes:Dataset"
+    "owl:disjointWith" ["imago:MediaCollection"
+                        "imago:User"
+                        "imago:AnonUser"
+                        "imago:ImageVersion"
+                        "imago:ImageVersionPreset"
+                        "imago:MediaVersionPreset"]}}
+  {"imago:MediaCollection"
+   {"rdfs:subClassOf" "dctypes:Collection"
+    "owl:disjointWith" ["imago:User"
+                        "imago:AnonUser"
+                        "imago:ImageVersion"
+                        "imago:ImageVersionPreset"
+                        "imago:MediaVersionPreset"]}}
+  {"imago:ImageVersion"
+   {"rdfs:subClass" "dctypes:StillImage"}}
+  {"imago:usesPreset" {"rdf:type" "rdf:Property"}}
 
- {"imago:ImageVersionPreset"
-  {"rdf:subClass" "imago:MediaVersionPreset"}}
- {"imago:restrict" {"rdf:type" "rdf:Property"}}
- {"imago:width" {"rdf:type" "rdf:Property"}}
- {"imago:height" {"rdf:type" "rdf:Property"}}
- {"imago:crop" {"rdf:type" "rdf:Property"}}
- {"imago:filter" {"rdf:type" "rdf:Property"}}
+  ;; media presets
 
- ;; users
+  {"imago:ImageVersionPreset"
+   {"rdf:subClass" "imago:MediaVersionPreset"}}
+  {"imago:restrict" {"rdf:type" "rdf:Property"}}
+  {"imago:width" {"rdf:type" "rdf:Property"}}
+  {"imago:height" {"rdf:type" "rdf:Property"}}
+  {"imago:crop" {"rdf:type" "rdf:Property"}}
+  {"imago:filter" {"rdf:type" "rdf:Property"}}
 
- {"imago:User"
-  {"rdfs:subClassOf" "foaf:Agent"}}
- {"imago:AnonUser"
-  {"rdfs:subClassOf" "imago:User"}}
+  ;; users
 
- ;; roles & permissions
+  {"imago:User"
+   {"rdfs:subClassOf" "foaf:Agent"}}
+  {"imago:AnonUser"
+   {"rdfs:subClassOf" "imago:User"}}
 
- {"imago:passwordSha256Hash"
-  {"rdf:type" "rdf:Property"
-   "rdfs:domain" "foaf:Agent"}}
- [["imago:canViewColl"
-   "imago:canViewMeta"
-   "imago:canViewVersion"
-   "imago:canViewRepo"
-   "imago:canEditColl"
-   "imago:canEditRepo"
-   "imago:canEditUser"
-   "imago:canCreateColl"
-   "imago:canCreateUser"]
-  "rdf:type" "rdf:Property"]
- ["imago:canEditColl" "rdfs:subPropertyOf" "imago:canViewColl"]
- ["imago:canEditRepo" "rdfs:subPropertyOf"
-  ["imago:canViewColl"
-   "imago:canViewMeta"
-   "imago:canViewVersion"
-   "imago:canViewRepo"
-   "imago:canEditColl"
-   "imago:canEditUser"
-   "imago:canCreateColl"]]
- [["imago:canViewColl"
-   "imago:canViewMeta"
-   "imago:canViewVersion"
-   "imago:canViewRepo"
-   "imago:canEditColl"
-   "imago:canEditRepo"
-   "imago:canEditUser"
-   "imago:canCreateColl"
-   "imago:canCreateUser"]
-  "rdfs:domain" "foaf:Agent"]]
+  ;; roles & permissions
+
+  [["imago:passwordSha256Hash"
+    "imago:hasAccessToken"
+    "imago:canViewColl"
+    "imago:canViewMeta"
+    "imago:canViewVersion"
+    "imago:canViewRepo"
+    "imago:canEditColl"
+    "imago:canEditRepo"
+    "imago:canEditUser"
+    "imago:canCreateColl"
+    "imago:canCreateUser"]
+   "rdf:type" "rdf:Property"]
+  ["imago:canEditColl"
+   "rdfs:subPropertyOf" ["imago:canViewColl"]]
+  ["imago:canEditRepo"
+   "rdfs:subPropertyOf" ["imago:canViewMeta"
+                         "imago:canViewVersion"
+                         "imago:canViewRepo"
+                         "imago:canEditColl"
+                         "imago:canEditUser"
+                         "imago:canCreateColl"]]
+  [["imago:passwordSha256Hash"
+    "imago:hasAccessToken"
+    "imago:canViewColl"
+    "imago:canViewMeta"
+    "imago:canViewVersion"
+    "imago:canViewRepo"
+    "imago:canEditColl"
+    "imago:canEditRepo"
+    "imago:canEditUser"
+    "imago:canCreateColl"
+    "imago:canCreateUser"]
+   "rdfs:domain" "foaf:Agent"]]}
 
 
 ;; Admin

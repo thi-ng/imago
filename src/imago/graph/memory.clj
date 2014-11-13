@@ -21,7 +21,7 @@
     [_ triples]
     (dosync
      (info "adding triples:" (count triples))
-     (ref-set g (trio/add-bulk @g triples))
+     (ref-set g (trio/add-triples @g triples))
      (api/save-graph _ (-> conf :memory :path) {})))
   (query [_ qspec]
     (q/query (assoc qspec :from @g)))

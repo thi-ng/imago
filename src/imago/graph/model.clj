@@ -4,9 +4,11 @@
    [imago.utils :as utils]
    [thi.ng.trio.core :as trio]
    [thi.ng.trio.query :as q]
+   [thi.ng.trio.vocabs.utils :as vu]
    [thi.ng.validate.core :as v]
    [thi.ng.common.data.core :as d]
    [environ.core :refer [env]]
+   [clojure.java.io :as io]
    [slingshot.slingshot :refer [throw+]]))
 
 (def salt (or (env :imago-salt) "969a606798c94d03b53c3fa5e83b4594"))
@@ -110,7 +112,7 @@
 (defmacro defentity
   [name type props]
   (let [->sym      (comp symbol clojure.core/name)
-        props      (merge {:type {:prop "rdf:type"}} props)
+        props      (merge {:type {:prop (:type rdf)}} props)
         fields     (cons 'id (map ->sym (keys props)))
         ctor-name  (utils/->kebab-case name)
         ctor       (symbol (str 'make- ctor-name))
@@ -362,7 +364,7 @@
                   {(:id admin) (:canEditColl imago)
                    (:id anon) (:canViewColl imago)})]
     (concat
-     (load-vocab-triples "vocabs/imago.edn")
+     (:triples (vu/load-vocab-triples (io/resource "vocabs/imago.edn")))
      [admin anon]
      repo
      coll

@@ -1,86 +1,29 @@
 (ns imago.graph.vocab
   (:require
    [thi.ng.trio.core :as trio]
+   [thi.ng.trio.vocabs :refer [defvocab]]
+   [thi.ng.trio.vocabs.utils :as vu]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]))
 
-(defn load-vocab-triples
-  [path]
-  (->> path
-       (io/resource)
-       (slurp)
-       (edn/read-string)
-       (trio/triple-seq)
-       (vec)))
+(def rdf thi.ng.trio.vocabs.rdf/rdf)
 
-(defn load-model
-  [path]
-  (->> path
-       (io/resource)
-       (slurp)
-       (edn/read-string)
-       (trio/as-model)))
+(def rdfs thi.ng.trio.vocabs.rdfs/rdfs)
 
-(defn vocab-from-model
-  [graph]
-  (->> graph
-       (trio/subjects)
-       (map #(let [[_ v] (str/split % #":")] [(keyword v) %]))
-       (into {})))
+(def owl thi.ng.trio.vocabs.owl/owl)
 
-(defn make-vocab
-  [prefix xs]
-  (->> xs
-       (map (fn [x] [x (str prefix x)]))
-       (into {})))
-
-(defmacro defvocab
-  [id & xs]
-  `(def ~id
-     (let [xs# (list ~@xs)]
-       (if (string? (first xs#))
-         (-> xs# first load-model vocab-from-model)
-         (make-vocab (name '~id) xs#)))))
-
-(defvocab dcterms
-  :abstract
-  :accessRights
-  :contributor
-  :created
-  :creator
-  :dateSubmitted
-  :description
-  :format
-  :hasPart
-  :hasVersion
-  :isPartOf
-  :license
-  :modified
-  :publisher
-  :references
-  :rights
-  :title)
+(def dcterms thi.ng.trio.vocabs.dcterms/dcterms)
 
 (defvocab dctypes
+  "http://purl.org/dc/dcmitype/"
   :Collection
   :MovingImage
   :RightsStatement
   :StillImage)
 
-(defvocab rdf
-  :Property
-  :Resource
-  :object
-  :predicate
-  :subject
-  :type)
-
-(defvocab rdfs
-  :Class
-  :subClasOf)
-
 (defvocab foaf
+  "http://xmlns.com/foaf/0.1/"
   :Agent
   :firstName
   :homepage
@@ -89,6 +32,8 @@
   :name
   :nick)
 
-(defvocab doap :Project)
-
-(defvocab imago "vocabs/imago.edn")
+(def imago
+  (-> "vocabs/imago.edn"
+      io/resource
+      vu/load-vocabs-as-model
+      :imago))

@@ -1,6 +1,7 @@
 (ns imago.config
   (:require
    [imago.graph.model :as model]
+   [imago.graph.vocab :refer [imago]]
    [imago.utils :as utils]
    [thi.ng.validate.core :as v]
    [environ.core :refer [env]]))
@@ -70,7 +71,7 @@
            :get-collection
            {:coll-id [(v/required) (v/uuid4)]}
            :new-collection
-           {:user {:perms [(v/required-keys ["imago:canCreateColl"] "insufficient permission")]}
+           {:user {:perms [(v/required-keys [(:canCreateColl imago)] "insufficient permission")]}
             :title [(v/optional (v/max-length 64))]}}}
    
    :ui

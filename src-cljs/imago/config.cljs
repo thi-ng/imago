@@ -5,9 +5,10 @@
 (declare logged-in?)
 
 (def perms
-  {:create-coll "imago:canCreateColl"
-   :create-user "imago:canCreateUser"
-   :maintenance "imago:canEditRepo"})
+  {:create-coll "http://imago.thi.ng/owl/canCreateColl"
+   :create-user "http://imago.thi.ng/owl/canCreateUser"
+   :edit-coll   "http://imago.thi.ng/owl/canEditColl"
+   :maintenance "http://imago.thi.ng/owl/canEditRepo"})
 
 (def presets
   {:imago-thumb "617e6192-d1a3-4422-b3cc-d7fcfb782de5"
