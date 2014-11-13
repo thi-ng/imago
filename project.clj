@@ -19,7 +19,8 @@
                  [clj-time "0.6.0"]
                  [amazonica "0.2.27" :exclusions [joda-time]]
                  [net.coobird/thumbnailator "0.4.7"]
-
+                 [thi.ng/crypto "0.1.0-SNAPSHOT"]
+                 
                  ;; cljs
                  [org.clojure/clojurescript "0.0-2322"]
                  [com.cognitect/transit-cljs "0.8.188"]
@@ -31,9 +32,8 @@
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [thi.ng/trio "0.1.0-SNAPSHOT"]
                  [thi.ng/color "0.1.0-SNAPSHOT"]
-                 [thi.ng/geom-core "0.3.0-SNAPSHOT"]
-                 [thi.ng/geom-webgl "0.3.0-SNAPSHOT"]
-                 [thi.ng/macromath "0.2.3"]
+                 [thi.ng/geom "0.3.0-SNAPSHOT"]
+                 [thi.ng/macromath "0.3.0-SNAPSHOT"]
                  [thi.ng/validate "0.1.0-SNAPSHOT"]]
 
   :profiles {:dev {:plugins [[lein-cljsbuild "1.0.3"]]}}
