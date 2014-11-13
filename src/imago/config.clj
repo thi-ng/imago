@@ -78,7 +78,8 @@
    {:dev  {:css ["/css/bootstrap.min.css"
                  "/css/bootstrap-theme.min.css"
                  "/css/imago.css"]
-           :js  ["/js/app.js"
+           :js  [;;"/lib/react.min.js"
+                 "/js/app.js"
                  "/lib/sha256.js"]
            :override-config "'imago.config.app'"}
     :prod {:css ["/css/bootstrap.min.css"

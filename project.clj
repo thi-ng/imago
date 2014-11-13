@@ -23,7 +23,7 @@
                  
                  ;; cljs
                  [org.clojure/clojurescript "0.0-2322"]
-                 [com.cognitect/transit-cljs "0.8.188"]
+                 ;;[com.cognitect/transit-cljs "0.8.188"]
                  ;;[racehub/om-bootstrap "0.3.0" :exclusions [org.clojure/clojure]]
                  ;;[om "0.7.3"]
                  ;;[sablono "0.2.22"]
@@ -41,10 +41,13 @@
   :cljsbuild {:builds [{:id "dev"
                         :source-paths ["src-cljs"]
                         :compiler {:output-to "resources/public/js/app.js"
-                                   :optimizations :whitespace}}
+                                   :optimizations :whitespace
+                                   ;;:preamble ["resources/public/lib/react.min.js"]
+                                   ;;:externs ["js/externs/react-0.11.js"]
+                                   }}
                        {:id "release"
                         :source-paths ["src-cljs"]
-                        :compiler {:output-to "resources/public/js/app.min.js"
+                        :compiler {:output-to "resources/public/js/app.js"
                                    :optimizations :advanced
                                    :pretty-print false
                                    ;;:preamble ["resources/public/lib/react.min.js"]

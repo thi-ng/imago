@@ -3,6 +3,10 @@
    [thi.ng.trio.core :as trio]
    [thi.ng.trio.vocabs :refer [defvocab]]
    [thi.ng.trio.vocabs.utils :as vu]
+   [thi.ng.trio.vocabs.rdf]
+   [thi.ng.trio.vocabs.rdfs]
+   [thi.ng.trio.vocabs.owl]
+   [thi.ng.trio.vocabs.dcterms]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]))
