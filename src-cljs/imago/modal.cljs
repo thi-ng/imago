@@ -1,8 +1,8 @@
 (ns imago.modal
   (:require
    [imago.config :as config]
-   [thi.ng.cljs.log :refer [debug info warn]]
-   [thi.ng.cljs.dom :as dom]))
+   [thi.ng.domus.log :refer [debug info warn]]
+   [thi.ng.domus.core :as dom]))
 
 (defn modal-dialog
   [title body bt-label handler]

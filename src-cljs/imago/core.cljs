@@ -8,13 +8,13 @@
    [imago.collection :as coll]
    [imago.login :as login]
    [imago.alerts :as alerts]
-   [thi.ng.cljs.async :as async]
-   [thi.ng.cljs.io :as io]
-   [thi.ng.cljs.log :refer [debug info warn]]
-   [thi.ng.cljs.route :as route]
-   [thi.ng.cljs.utils :as utils]
-   [thi.ng.cljs.dom :as dom]
-   [thi.ng.cljs.detect :as detect]
+   [thi.ng.domus.async :as async]
+   [thi.ng.domus.io :as io]
+   [thi.ng.domus.log :refer [debug info warn]]
+   [thi.ng.domus.router :as router]
+   [thi.ng.domus.utils :as utils]
+   [thi.ng.domus.core :as dom]
+   [thi.ng.domus.detect :as detect]
    [goog.events :as events]
    [clojure.string :as str]
    [cljs.reader :refer [read-string]]
@@ -88,7 +88,7 @@
         (async/publish bus init-id [state params]))
       (do
         (warn "route handling module not configured:" new-id)
-        (apply route/replace-route!
+        (apply router/replace-route!
                (or (-> @state :route :route)
                    (get-in config/app [:routes (:default-route-id config/app) :route])))))))
 
@@ -121,12 +121,12 @@
 
 (defn init-router
   [state routes default-route-id]
-  (let [router (route/router
-                routes (routes default-route-id)
+  (let [router (router/router
+                routes default-route-id
                 #(async/publish (:bus @state) :route-changed %))]
     (listen-route-change state)
     (listen-route-refresh state)
-    (route/start-router! router)))
+    (router/start! router)))
 
 (defn make-app-state
   [bus user]
@@ -143,14 +143,14 @@
 (defn get-session-user
   [init]
   (io/request
-   :uri     (config/api-route :current-user)
-   :method  :get
-   :edn?    true
-   :success (fn [status body]
-              (info :success-response status body)
-              (init (:body body)))
-   :error   (fn [status body]
-              (warn :error-response status body))))
+   {:uri     (config/api-route :current-user)
+    :method  :get
+    :edn?    true
+    :success (fn [status body]
+               (info :success-response status body)
+               (init (:body body)))
+    :error   (fn [status body]
+               (warn :error-response status body))}))
 (defn start
   []
   (config/set-config! "__IMAGO_CONFIG__")

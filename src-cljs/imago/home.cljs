@@ -4,11 +4,11 @@
   (:require
    [imago.config :as config]
    [imago.login :as login]
-   [thi.ng.cljs.async :as async]
-   [thi.ng.cljs.log :refer [debug info warn]]
-   [thi.ng.cljs.route :as route]
-   [thi.ng.cljs.utils :as utils]
-   [thi.ng.cljs.dom :as dom]
+   [thi.ng.domus.async :as async]
+   [thi.ng.domus.log :refer [debug info warn]]
+   [thi.ng.domus.router :as router]
+   [thi.ng.domus.utils :as utils]
+   [thi.ng.domus.core :as dom]
    [cljs.core.async :refer [<! timeout]]))
 
 (defn show-template

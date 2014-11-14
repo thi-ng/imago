@@ -10,12 +10,12 @@
    [thi.ng.trio.vocabs.rdfs :refer [rdfs]]
    [thi.ng.trio.vocabs.owl :refer [owl]]
    [thi.ng.trio.vocabs.dcterms :refer [dcterms]]
-   [thi.ng.cljs.async :as async]
-   [thi.ng.cljs.log :refer [debug info warn]]
-   [thi.ng.cljs.route :as route]
-   [thi.ng.cljs.utils :as utils]
-   [thi.ng.cljs.dom :as dom]
-   [thi.ng.cljs.io :as io]
+   [thi.ng.domus.async :as async]
+   [thi.ng.domus.log :refer [debug info warn]]
+   [thi.ng.domus.router :as router]
+   [thi.ng.domus.utils :as utils]
+   [thi.ng.domus.core :as dom]
+   [thi.ng.domus.io :as io]
    [thi.ng.common.stringformat :as ff]
    [cljs.core.async :refer [<! timeout]]))
 
@@ -29,17 +29,16 @@
           fd (js/FormData.)
           fd (reduce-kv (fn [fd k v] (doto fd (.append k v))) fd (:files @local))]
       (io/request
-       :uri     (config/api-route :collection (:id @local))
-       :method  :post
-       :edn?    true
-       :data    fd
-       :success (fn [status body]
-                  (info :success-response status body)
-                  (async/publish bus :refresh-route nil)
-                  (async/publish bus :upload-success (:body body)))
-       :error   (fn [status body]
-                  (warn :error-response status body)
-                  (async/publish bus :upload-fail (:body body)))))))
+       {:uri     (config/api-route :collection (:id @local))
+        :method  :post
+        :data    fd
+        :success (fn [status body]
+                   (info :success-response status body)
+                   (async/publish bus :refresh-route nil)
+                   (async/publish bus :upload-success (:body body)))
+        :error   (fn [status body]
+                   (warn :error-response status body)
+                   (async/publish bus :upload-fail (:body body)))}))))
 
 (defn file-exists?
   [files name size]
@@ -134,43 +133,42 @@
 (defn load-collection
   [state local]
   (io/request
-   :uri     (config/api-route :collection (:id @local))
-   :method  :get
-   :edn?    true
-   :success (fn [status body]
-              (let [graph (trio/as-model (:body body))
-                    title (-> graph (trio/select (:id @local) (:title dcterms) nil) (first) (peek))
-                    owner (-> graph (trio/select (:id @local) (:creator dcterms) nil) (first) (peek))
-                    perms (->> {:select ['?perms]
-                                :from graph
-                                :query [{:where [['?r (:type rdf) "http://purl.org/dc/dcmitype/RightsStatement"]
-                                                 ['?r (:subject rdf) '?u]
-                                                 ['?r (:predicate rdf) '?p]]}]
-                                :aggregate {'?perms {:use '?p :fn #(into #{} %)}}
-                                :group '?u}
-                               (q/query)
-                               (reduce-kv #(assoc %1 %2 (%3 '?perms)) {}))
-                    items (q/query {:select :*
-                                    :from graph
-                                    :query [{:where [['?img (:hasVersion dcterms) '?thumb]
-                                                     ['?img (:dateSubmitted dcterms) '?time]
-                                                     ['?thumb (:references dcterms) (:imago-thumb config/presets)]]}
-                                            {:optional [['?img (:hasVersion dcterms) '?xl]
-                                                        ['?xl (:references dcterms) (:imago-xl config/presets)]]}]
-                                    :order-desc '?time})]
-                (debug :model (:body body))
-                (debug :coll-perms perms)
-                (swap!
-                 local assoc
-                 :title title
-                 :owner owner
-                 :items items
-                 :perms perms
-                 :graph graph)
-                (show-template state local)))
-   :error   (fn [status body]
-              (warn :error-response status body)
-              (async/publish (:bus @state) :load-coll-fail (:body body)))))
+   {:uri     (config/api-route :collection (:id @local))
+    :method  :get
+    :success (fn [status body]
+               (let [graph (trio/as-model (:body body))
+                     title (-> graph (trio/select (:id @local) (:title dcterms) nil) (first) (peek))
+                     owner (-> graph (trio/select (:id @local) (:creator dcterms) nil) (first) (peek))
+                     perms (->> {:select ['?perms]
+                                 :from graph
+                                 :query [{:where [['?r (:type rdf) "http://purl.org/dc/dcmitype/RightsStatement"]
+                                                  ['?r (:subject rdf) '?u]
+                                                  ['?r (:predicate rdf) '?p]]}]
+                                 :aggregate {'?perms {:use '?p :fn #(into #{} %)}}
+                                 :group '?u}
+                                (q/query)
+                                (reduce-kv #(assoc %1 %2 (%3 '?perms)) {}))
+                     items (q/query {:select :*
+                                     :from graph
+                                     :query [{:where [['?img (:hasVersion dcterms) '?thumb]
+                                                      ['?img (:dateSubmitted dcterms) '?time]
+                                                      ['?thumb (:references dcterms) (:imago-thumb config/presets)]]}
+                                             {:optional [['?img (:hasVersion dcterms) '?xl]
+                                                         ['?xl (:references dcterms) (:imago-xl config/presets)]]}]
+                                     :order-desc '?time})]
+                 (debug :model (:body body))
+                 (debug :coll-perms perms)
+                 (swap!
+                  local assoc
+                  :title title
+                  :owner owner
+                  :items items
+                  :perms perms
+                  :graph graph)
+                 (show-template state local)))
+    :error   (fn [status body]
+               (warn :error-response status body)
+               (async/publish (:bus @state) :load-coll-fail (:body body)))}))
 
 (defn init
   [bus]

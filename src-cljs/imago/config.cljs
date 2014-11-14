@@ -1,6 +1,6 @@
 (ns imago.config
   (:require
-   [thi.ng.cljs.dom :as dom]))
+   [thi.ng.domus.core :as dom]))
 
 (declare logged-in?)
 
@@ -25,12 +25,12 @@
            {:id :about :route "#/about" :label "About"}]}
 
    :routes
-   [{:match ["home"] :controller :home :route ["home"]}
-    {:match ["about"] :controller :about}
-    {:match ["collections" :id] :controller :collection}
-    {:match ["media" :id] :controller :media}
-    {:match ["users" :user] :controller :user}]
-   :default-route-id 0
+   [{:match ["home"] :controller :home :id :home}
+    {:match ["about"] :controller :about :id :home}
+    {:match ["collections" :id] :controller :collection :id :collection}
+    {:match ["media" :id] :controller :media :id :media}
+    {:match ["users" :user] :controller :user :id :user}]
+   :default-route-id :home
 
    :api-routes
    {:image            (fn [id] (str "/media/images/" id))

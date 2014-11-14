@@ -2,8 +2,8 @@
   (:require-macros
    [cljs.core.async.macros :refer [go]])
   (:require 
-   [thi.ng.cljs.log :refer [debug info warn]]
-   [thi.ng.cljs.dom :as dom]
+   [thi.ng.domus.log :refer [debug info warn]]
+   [thi.ng.domus.core :as dom]
    [cljs.core.async :as async :refer [<! timeout]]))
 
 (defn alert

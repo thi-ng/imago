@@ -3,28 +3,27 @@
    [cljs.core.async.macros :refer [go go-loop]])
   (:require
    [imago.config :as config]
-   [thi.ng.cljs.async :as async]
-   [thi.ng.cljs.log :refer [debug info warn]]
-   [thi.ng.cljs.route :as route]
-   [thi.ng.cljs.utils :as utils]
-   [thi.ng.cljs.dom :as dom]
-   [thi.ng.cljs.io :as io]
+   [thi.ng.domus.async :as async]
+   [thi.ng.domus.log :refer [debug info warn]]
+   [thi.ng.domus.router :as router]
+   [thi.ng.domus.utils :as utils]
+   [thi.ng.domus.core :as dom]
+   [thi.ng.domus.io :as io]
    [cljs.core.async :refer [<! timeout]]))
 
 (defn handle-new-collection
   [state]
   (io/request
-   :uri     (config/api-route :new-collection) ;; TODO coll spec incl. :method
-   :method  :put
-   :edn?    true
-   :data    {}
-   :success (fn [status body]
-              (info :success-response status body)
-              (async/publish (:bus @state) :refresh-route nil)
-              (async/publish (:bus @state) :newcoll-success (:body body)))
-   :error   (fn [status body]
-              (warn :error-response status body)
-              (async/publish (:bus @state) :newcoll-fail (:body body)))))
+   {:uri     (config/api-route :new-collection) ;; TODO coll spec incl. :method
+    :method  :put
+    :data    {}
+    :success (fn [status body]
+               (info :success-response status body)
+               (async/publish (:bus @state) :refresh-route nil)
+               (async/publish (:bus @state) :newcoll-success (:body body)))
+    :error   (fn [status body]
+               (warn :error-response status body)
+               (async/publish (:bus @state) :newcoll-fail (:body body)))}))
 
 (defn show-template
   [state local]
@@ -60,15 +59,14 @@
 (defn load-collections
   [state local]
   (io/request
-   :uri     (config/api-route :user-collections (-> @local :user))
-   :method  :get
-   :edn?    true
-   :success (fn [status body]
-              (info :success-response status body)
-              (show-collections state (:body body)))
-   :error   (fn [status body]
-              (warn :error-response status body)
-              (async/publish (:bus @state) :io-fail (:body body)))))
+   {:uri     (config/api-route :user-collections (-> @local :user))
+    :method  :get
+    :success (fn [status body]
+               (info :success-response status body)
+               (show-collections state (:body body)))
+    :error   (fn [status body]
+               (warn :error-response status body)
+               (async/publish (:bus @state) :io-fail (:body body)))}))
 
 (defn init
   [bus]

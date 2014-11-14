@@ -23,13 +23,14 @@
                  
                  ;; cljs
                  [org.clojure/clojurescript "0.0-2322"]
+                 [thi.ng/domus "0.1.0-SNAPSHOT"]
                  ;;[com.cognitect/transit-cljs "0.8.188"]
                  ;;[racehub/om-bootstrap "0.3.0" :exclusions [org.clojure/clojure]]
                  ;;[om "0.7.3"]
                  ;;[sablono "0.2.22"]
 
                  ;; cljx
-                 [org.clojure/core.async "0.1.303.0-886421-alpha"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [thi.ng/trio "0.1.0-SNAPSHOT"]
                  [thi.ng/color "0.1.0-SNAPSHOT"]
                  [thi.ng/geom "0.3.0-SNAPSHOT"]
